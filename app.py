@@ -256,7 +256,6 @@ def extract_job_title_with_ai(cv_text):
     except Exception:
         pass
     
-    # محاولة احتياطية من الأسطر الأولى إذا فشل النموذج
     lines = [line.strip() for line in cv_text.split('\n') if line.strip()]
     if len(lines) > 1:
         possible_title = lines[1]
@@ -519,7 +518,7 @@ else:
                             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
                             name = lines[0] if lines else "غير محدد"
                             
-                            # --- استخراج التخصص ديناميكياً بواسطة الذكاء الاصطناعي ---
+                            # --- استخراج التخصص ديناميكياً ---
                             job_title = extract_job_title_with_ai(extracted_text)
                             
                             email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
@@ -528,11 +527,17 @@ else:
                             phone_m = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}', extracted_text)
                             phone = phone_m.group(0).strip() if phone_m else "غير مذكور"
                             
-                            score = np.random.randint(68, 89)
-                            ai_analysis = analyze_cv_with_ai(extracted_text)
-                            cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
+                            # --- الشرط الجديد للنسبة بناءً على اسم الملف ---
+                            file_name_lower = uploaded_file.name.lower()
+                            if "ats.cv" in file_name_lower or "ats_cv" in file_name_lower:
+                                score = np.random.randint(90, 101)  # بين 90% و 100%
+                            else:
+                                score = np.random.randint(50, 76)   # بين 50% و 75% بحد أقصى
 
-                            # تسجيل التخصص الديناميكي بدلاً من القيمة الثابتة في Google Sheet
+                            ai_analysis = analyze_cv_with_ai(extracted_text)
+                            cat_scores = [score - 3, score + 2, score - 5, score - 7, score]
+
+                            # تسجيل البيانات في Google Sheet
                             append_to_google_sheet_silent(
                                 name, job_title, email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
                             )
