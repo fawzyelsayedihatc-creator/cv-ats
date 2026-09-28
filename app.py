@@ -525,8 +525,7 @@ else:
                 label="📥 تنزيل شيت إكسيل الخاص بك (Excel)",
                 data=excel_data,
                 file_name=f"CV_Analysis_{res['name']}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            import os
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  import os
 import re
 import json
 import sqlite3
