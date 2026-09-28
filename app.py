@@ -59,9 +59,9 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
         margin-top: 15px;
         margin-bottom: 20px;
-        font-size: 12px !important;
-        font-weight: 500 !important;
-        line-height: 1.2 !important;
+        font-size: 18px !important;
+        font-weight: 800 !important;
+        line-height: 1.8 !important;
         color: #0F172A !important;
     }
 
