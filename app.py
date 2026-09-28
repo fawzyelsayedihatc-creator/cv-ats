@@ -171,7 +171,7 @@ if not st.session_state.logged_in and "user" in query_params:
         st.session_state.role = user[2]
         st.session_state.current_coins = user[3]
 
-# --- 6. دمج الوظائف المساعدة ---
+# --- 6. دمج الوظائف المساعدة واستخراج التخصص ---
 def login_user(email, password):
     email_clean = email.strip().lower()
     conn = get_db_connection()
@@ -236,6 +236,34 @@ def convert_pdf_to_images(uploaded_file):
     except Exception:
         pass
     return images_bytes
+
+# --- دالة استخراج التخصص / المسمى الوظيفي الذكية ---
+def extract_job_title_with_ai(cv_text):
+    prompt = f"""
+    قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية (مثل: Software Engineer, Accountant, Graphic Designer, Sales Manager, Data Analyst, إلخ).
+    أعد لي **فقط** المسمى الوظيفي أو التخصص في كلمة إلى ثلاث كلمات كحد أقصى، بدون أي مقدمات أو شرح أو علامات تنقيط.
+    إذا لم تجد مسمى وظيفي واضح، اكتب: غير محدد.
+    
+    نص السيرة الذاتية:
+    {cv_text[:2000]}
+    """
+    try:
+        if ai_model:
+            response = ai_model.generate_content(prompt)
+            title = response.text.strip().replace("\n", "")
+            if title and len(title) < 50:
+                return title
+    except Exception:
+        pass
+    
+    # محاولة احتياطية من الأسطر الأولى إذا فشل النموذج
+    lines = [line.strip() for line in cv_text.split('\n') if line.strip()]
+    if len(lines) > 1:
+        possible_title = lines[1]
+        if len(possible_title) < 40 and not re.search(r'@|\d{5,}', possible_title):
+            return possible_title
+            
+    return "غير محدد"
 
 def analyze_cv_with_ai(cv_text):
     prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
@@ -365,7 +393,6 @@ else:
         st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
         st.metric(label="📄 عدد الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
         
-        # --- زر لوحة الإدارة (يظهر فقط لحساب د. فوزي) ---
         if st.session_state.role == 'admin':
             st.divider()
             if st.session_state.current_page == "main":
@@ -393,17 +420,15 @@ else:
             st.rerun()
 
     # =========================================================
-    # 🔴 الصفحة الأولى: لوحة إدارة النظام (تظهر في صفحة كاملة ومستقلة)
+    # 🔴 الصفحة الأولى: لوحة إدارة النظام
     # =========================================================
     if st.session_state.current_page == "admin" and st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
         st.write("مرحباً بك في لوحة التحكم، اختر من التبويبات التالية لإدارة النظام بشكل منفصل:")
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # فصل الطلبات عن الحسابات في صفحتين/تبويبين منفصلين تماماً وبمساحة كاملة
         tab_pending_page, tab_active_page = st.tabs(["⏳ إدارة الطلبات المعلقة", "🟢 إدارة الحسابات والكوينز"])
 
-        # 1️⃣ صفحة الطلبات المعلقة
         with tab_pending_page:
             st.subheader("📋 طلبات التسجيل بانتظار الموافقة")
             st.caption("هنا تظهر الحسابات الجديدة التي تنتظر تفعيلك لها:")
@@ -428,7 +453,6 @@ else:
             else:
                 st.info("🎉 لا توجد أي طلبات تسجيل معلقة حالياً.")
 
-        # 2️⃣ صفحة إدارة الحسابات والكوينز
         with tab_active_page:
             st.subheader("⚙️ الحسابات المفعلة للتحكم في الكوينز")
             st.caption("يمكنك تعديل رصيد الكوينز المتاح لكل مستخدم مباشرة:")
@@ -495,6 +519,9 @@ else:
                             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
                             name = lines[0] if lines else "غير محدد"
                             
+                            # --- استخراج التخصص ديناميكياً بواسطة الذكاء الاصطناعي ---
+                            job_title = extract_job_title_with_ai(extracted_text)
+                            
                             email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
                             email = email_m.group(0) if email_m else "غير مذكور"
                             
@@ -505,8 +532,9 @@ else:
                             ai_analysis = analyze_cv_with_ai(extracted_text)
                             cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
 
+                            # تسجيل التخصص الديناميكي بدلاً من القيمة الثابتة في Google Sheet
                             append_to_google_sheet_silent(
-                                name, "Applicant", email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
+                                name, job_title, email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
                             )
 
                             st.session_state.last_analysis = {
@@ -515,7 +543,7 @@ else:
                                 'cat_scores': cat_scores,
                                 'ai_analysis': ai_analysis,
                                 'name': name,
-                                'job_title': "Applicant",
+                                'job_title': job_title,
                                 'email': email,
                                 'phone': phone
                             }
