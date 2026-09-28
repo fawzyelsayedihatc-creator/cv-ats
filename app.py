@@ -352,10 +352,10 @@ if not st.session_state.logged_in:
 else:
     visitor_ip = get_user_ip()
     
-    # تحديث الكوينز من قاعدة البيانات في كل تحميل لضمان المزامنة الدقيقة
     current_coins = fetch_user_coins(st.session_state.user_email)
     st.session_state.current_coins = current_coins
     
+    # --- القائمة الجانبية (Sidebar) ---
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
         
@@ -375,7 +375,42 @@ else:
         whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
         st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#25D366; color:white; font-weight:800; padding:12px; border-radius:8px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
 
-    # --- واجهة الفحص الرئيسية ---
+        # --- لوحة التحكم الخاصة بالأدمن (تم نقلها بالكامل للجانب فقط لحسابك) ---
+        if st.session_state.role == 'admin':
+            st.divider()
+            st.markdown("### 👑 لوحة إدارة النظام")
+            tab_pending, tab_active = st.tabs(["⏳ الطلبات المعلقة", "🟢 النشطون"])
+
+            # 1. تبويب الطلبات المعلقة
+            with tab_pending:
+                all_users = get_all_users()
+                pending_users = [u for u in all_users if u[2] == 0]
+                if pending_users:
+                    for email, coins, approved, role in pending_users:
+                        st.caption(f"👤 `{email}`")
+                        if st.button(f"✅ قبول", key=f"app_{email}"):
+                            approve_user_db(email)
+                            st.success(f"تم قبول {email}")
+                            st.rerun()
+                else:
+                    st.info("لا توجد طلبات معلقة حالياً.")
+
+            # 2. تبويب المستخدمين النشطين
+            with tab_active:
+                all_users = get_all_users()
+                active_users = [u for u in all_users if u[2] == 1]
+                if active_users:
+                    for email, coins, approved, role in active_users:
+                        st.caption(f"👤 `{email}` (الرصيد: **{coins}**)")
+                        new_c = st.number_input("تعديل الرصيد:", value=coins, step=20, key=f"num_{email}")
+                        if st.button("تحديث", key=f"btn_{email}"):
+                            update_user_coins(email, new_c)
+                            st.success(f"تم التحديث إلى {new_c}")
+                            st.rerun()
+                else:
+                    st.caption("لا يوجد مستخدمون نشطون.")
+
+    # --- واجهة الفحص الرئيسية (في المنتصف) ---
     st.title("📄 نظام فحص وتحليل الـ CV")
     
     uploaded_file = st.file_uploader("قم برفع ملف السيرة الذاتية (PDF)", type=["pdf"])
@@ -385,7 +420,6 @@ else:
             if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
                 st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
             else:
-                # 1. الخصم المباشر والتحديث الفوري في اللحظة نفسها
                 if st.session_state.role != 'admin':
                     new_balance = current_coins - COINS_PER_CV
                     update_user_coins(st.session_state.user_email, new_balance)
@@ -435,14 +469,12 @@ else:
                             'email': email,
                             'phone': phone
                         }
-                        # إعادة التنشيط لتحديث الـ Sidebar بنفس اللحظة وبدون أي lag
                         st.rerun()
 
-    # --- عرض بطاقة تنبيه الخصم والرصيد المتبقي إن وجدت نتيجة ---
+    # --- عرض نتائج التحليل إن وجدت ---
     if st.session_state.last_analysis:
         res = st.session_state.last_analysis
         
-        # عرض معلومات الرصيد المتبقي بشكل مميز وجذاب للمستخدم
         rem_scans = current_coins // COINS_PER_CV if st.session_state.role != 'admin' else "غير محدود"
         st.info(f"💡 **تنبيه الرصيد:** رصيدك الحالي الآن هو **{current_coins} كوين** (متبقي لديك **{rem_scans}** عملية فحص أخرى).")
         st.divider()
@@ -492,48 +524,3 @@ else:
             file_name=f"CV_Analysis_{res['name']}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
-    # --- لوحة التحكم الخاصة بالأدمن (تظهر فقط لحسابك) ---
-    if st.session_state.role == 'admin':
-        st.divider()
-        st.subheader("👑 لوحة إدارة النظام - دكتور فوزي")
-        tab_pending, tab_active = st.tabs(["⏳ الطلبات المعلقة", "🟢 المستخدمون النشطون"])
-
-        # 1. تبويب الطلبات المعلقة
-        with tab_pending:
-            all_users = get_all_users()
-            pending_users = [u for u in all_users if u[2] == 0]
-            if pending_users:
-                st.markdown("### ⏳ طلبات التسجيل بانتظار موافقتك")
-                for email, coins, approved, role in pending_users:
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.write(f"👤 `{email}`")
-                    with col2:
-                        if st.button(f"✅ قبول الحساب", key=f"app_{email}"):
-                            approve_user_db(email)
-                            st.success(f"تم قبول {email}")
-                            st.rerun()
-            else:
-                st.info("لا توجد أي طلبات معلقة حالياً.")
-
-        # 2. تبويب المستخدمين النشطين
-        with tab_active:
-            all_users = get_all_users()
-            active_users = [u for u in all_users if u[2] == 1]
-            if active_users:
-                st.markdown("### 🟢 قائمة الحسابات المفعلة للتحكم بالرصيد")
-                for email, coins, approved, role in active_users:
-                    col_u1, col_u2, col_u3 = st.columns([2, 2, 2])
-                    with col_u1:
-                        st.write(f"👤 `{email}`")
-                    with col_u2:
-                        st.write(f"🪙 الرصيد الحالي: **{coins}**")
-                    with col_u3:
-                        new_c = st.number_input("تعديل الرصيد:", value=coins, step=20, key=f"num_{email}")
-                        if st.button("تحديث الرصيد", key=f"btn_{email}"):
-                            update_user_coins(email, new_c)
-                            st.success(f"تم تحديث رصيد {email} إلى {new_c}")
-                            st.rerun()
-            else:
-                st.caption("لا يوجد مستخدمون نشطون حالياً.")
