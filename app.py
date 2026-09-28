@@ -32,22 +32,48 @@ st.markdown("""
     
     .stApp { background-color: #F8FAFC; }
     
-    /* أزرار عريضة ومجسمة */
+    /* تكبير وتوضيح التبويبات (Tabs) */
+    button[data-baseweb="tab"] {
+        font-size: 20px !important;
+        font-weight: 800 !important;
+        padding: 12px 24px !important;
+        color: #334155 !important;
+    }
+    
+    button[aria-selected="true"] {
+        color: #059669 !important;
+        border-bottom-color: #059669 !important;
+    }
+
+    /* تكبير حقول الإدخال والعناوين الخاصة بها */
+    .stTextInput label {
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        color: #1E293B !important;
+    }
+
+    .stTextInput input {
+        font-size: 18px !important;
+        padding: 12px !important;
+        border-radius: 8px !important;
+    }
+
+    /* أزرار عريضة ومجسمة وأكبر حظاً */
     .stButton>button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
-        font-size: 18px !important;
+        font-size: 20px !important;
         font-weight: 800 !important;
         border-radius: 10px !important;
-        padding: 12px 24px !important;
+        padding: 14px 28px !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2) !important;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25) !important;
         width: 100% !important;
         transition: all 0.2s ease-in-out !important;
     }
     .stButton>button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 20px rgba(5, 150, 105, 0.35) !important;
+        box-shadow: 0 6px 22px rgba(5, 150, 105, 0.4) !important;
     }
     
     /* بطاقات التقرير والنتائج وتنسيق الخطوط العريضة */
@@ -59,8 +85,8 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
         margin-top: 15px;
         margin-bottom: 20px;
-        font-size: 18px !important;
-        font-weight: 800 !important;
+        font-size: 17px !important;
+        font-weight: 700 !important;
         line-height: 1.8 !important;
         color: #0F172A !important;
     }
@@ -76,8 +102,8 @@ st.markdown("""
         color: white !important;
         text-align: center;
         font-weight: 800;
-        font-size: 16px;
-        padding: 12px;
+        font-size: 18px;
+        padding: 14px;
         border-radius: 10px;
         text-decoration: none;
         box-shadow: 0 4px 10px rgba(37, 211, 102, 0.2);
@@ -279,19 +305,22 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
-# --- 7. نظام تسجيل الدخول ---
+# --- 7. نظام تسجيل الدخول (تم تكبيره وتوسيعه) ---
 if not st.session_state.logged_in:
-    _, col_center, _ = st.columns([1, 1.8, 1])
+    # تم تكبير العمود الأوسط ليصبح واسعاً وواضحاً جداً
+    _, col_center, _ = st.columns([1, 3, 1])
     
     with col_center:
-        st.markdown("<br><h1 style='text-align: center; color: #059669;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B; font-weight: bold;'>منصة فحص السير الذاتية الذكية - إشراف د. فوزي علي</p>", unsafe_allow_html=True)
+        st.markdown("<br><h1 style='text-align: center; color: #059669; font-size: 40px;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #64748B; font-weight: bold; font-size: 20px;'>منصة فحص السير الذاتية الذكية - إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
         
         tab_login, tab_google, tab_signup = st.tabs(["🔑 تسجيل دخول", "🌐 دخول بـ Google", "📝 حساب جديد"])
         
         with tab_login:
+            st.markdown("<br>", unsafe_allow_html=True)
             login_email = st.text_input("اسم المستخدم / البريد الإلكتروني:", key="l_email")
             login_pass = st.text_input("كلمة المرور:", type="password", key="l_pass")
+            st.markdown("<br>", unsafe_allow_html=True)
             
             if st.button("تسجيل الدخول", key="login_btn"):
                 if login_email and login_pass:
@@ -309,10 +338,12 @@ if not st.session_state.logged_in:
                         st.error("بيانات الدخول غير صحيحة!")
 
         with tab_google:
-            st.markdown("#### 🌐 التسجيل الفوري عبر حساب Google")
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### 🌐 التسجيل الفوري عبر حساب Google")
             st.info("عند إدخال بريدك، يتم تقديم الطلب للأدمن للموافقة والتفعيل.")
             
             g_email_input = st.text_input("أدخل بريد Google الخاص بك:", placeholder="example@gmail.com", key="g_input")
+            st.markdown("<br>", unsafe_allow_html=True)
             
             if st.button("طلب الدخول بـ Google", key="g_login_submit"):
                 if g_email_input and "@" in g_email_input:
@@ -338,8 +369,11 @@ if not st.session_state.logged_in:
                     st.error("يرجى كتابة بريد إلكتروني صحيح.")
 
         with tab_signup:
+            st.markdown("<br>", unsafe_allow_html=True)
             signup_email = st.text_input("البريد الإلكتروني الجديد:", key="s_email")
             signup_pass = st.text_input("كلمة المرور:", type="password", key="s_pass")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             if st.button("إنشاء الحساب", key="signup_btn"):
                 if signup_email and signup_pass:
                     ok, msg = register_user(signup_email, signup_pass)
@@ -477,7 +511,6 @@ else:
             res = st.session_state.last_analysis
             st.divider()
 
-            # العمود الأيسر لمعاينة الـ PDF، والعمود الأيمن يجمع (السكور + التفاصيل + التقرير التفصيلي)
             col_pdf, col_stats = st.columns([1.1, 1])
 
             with col_pdf:
@@ -497,13 +530,11 @@ else:
                 st.pyplot(fig_bars)
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                # نقل التقرير والتحليل التفصيلي هنا في الجنب تحت الرسم البياني مباشرة
                 st.subheader("📝 التقرير والتحليل التفصيلي")
                 st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
 
             st.divider()
 
-            # جدول واستخراج البيانات بالتنزيل في الأسفل
             st.subheader("📋 البيانات المستخرجة وخيارات التنزيل")
             
             df_data = pd.DataFrame([{
