@@ -34,65 +34,77 @@ st.markdown("""
     
     /* تكبير وتوضيح التبويبات (Tabs) */
     button[data-baseweb="tab"] {
-        font-size: 20px !important;
+        font-size: 22px !important;
         font-weight: 800 !important;
-        padding: 12px 24px !important;
+        padding: 14px 28px !important;
         color: #334155 !important;
     }
     
     button[aria-selected="true"] {
         color: #059669 !important;
         border-bottom-color: #059669 !important;
+        border-bottom-width: 4px !important;
     }
 
     /* تكبير حقول الإدخال والعناوين الخاصة بها */
     .stTextInput label {
-        font-size: 18px !important;
-        font-weight: 700 !important;
+        font-size: 20px !important;
+        font-weight: 800 !important;
         color: #1E293B !important;
+        margin-bottom: 8px !important;
     }
 
     .stTextInput input {
-        font-size: 18px !important;
-        padding: 12px !important;
-        border-radius: 8px !important;
+        font-size: 20px !important;
+        padding: 14px 18px !important;
+        border-radius: 12px !important;
+        border: 2px solid #CBD5E1 !important;
     }
 
-    /* أزرار عريضة ومجسمة وأكبر حظاً */
+    /* أزرار بارزة جداً وفي المنتصف بملء العرض */
+    .stButton {
+        display: flex !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+
     .stButton>button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
-        font-size: 20px !important;
+        font-size: 24px !important;
         font-weight: 800 !important;
-        border-radius: 10px !important;
-        padding: 14px 28px !important;
+        border-radius: 12px !important;
+        padding: 16px 32px !important;
         border: none !important;
-        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25) !important;
+        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.3) !important;
         width: 100% !important;
+        text-align: center !important;
         transition: all 0.2s ease-in-out !important;
+        margin-top: 10px !important;
     }
+    
     .stButton>button:hover {
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 22px rgba(5, 150, 105, 0.4) !important;
+        box-shadow: 0 8px 25px rgba(5, 150, 105, 0.45) !important;
     }
     
     /* بطاقات التقرير والنتائج وتنسيق الخطوط العريضة */
     .report-card {
         background-color: #FFFFFF;
         border-radius: 12px;
-        padding: 20px;
+        padding: 24px;
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
         margin-top: 15px;
         margin-bottom: 20px;
-        font-size: 17px !important;
+        font-size: 18px !important;
         font-weight: 700 !important;
         line-height: 1.8 !important;
         color: #0F172A !important;
     }
 
     .report-card strong {
-        font-size: 19px !important;
+        font-size: 20px !important;
         font-weight: 800 !important;
     }
 
@@ -102,11 +114,11 @@ st.markdown("""
         color: white !important;
         text-align: center;
         font-weight: 800;
-        font-size: 18px;
-        padding: 14px;
-        border-radius: 10px;
+        font-size: 20px;
+        padding: 16px;
+        border-radius: 12px;
         text-decoration: none;
-        box-shadow: 0 4px 10px rgba(37, 211, 102, 0.2);
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -305,14 +317,14 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
-# --- 7. نظام تسجيل الدخول (تم تكبيره وتوسيعه) ---
+# --- 7. نظام تسجيل الدخول (تم تكبير الواجهة وتسنطير الأزرار) ---
 if not st.session_state.logged_in:
-    # تم تكبير العمود الأوسط ليصبح واسعاً وواضحاً جداً
-    _, col_center, _ = st.columns([1, 3, 1])
+    # استخدام تقسيم متناسق ومستعرض لمنح الصندوق مساحة كبيرة ومركزية
+    _, col_center, _ = st.columns([0.5, 3, 0.5])
     
     with col_center:
-        st.markdown("<br><h1 style='text-align: center; color: #059669; font-size: 40px;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B; font-weight: bold; font-size: 20px;'>منصة فحص السير الذاتية الذكية - إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
+        st.markdown("<br><h1 style='text-align: center; color: #059669; font-size: 48px; font-weight: 800;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #475569; font-weight: 800; font-size: 24px;'>منصة فحص السير الذاتية الذكية - إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
         
         tab_login, tab_google, tab_signup = st.tabs(["🔑 تسجيل دخول", "🌐 دخول بـ Google", "📝 حساب جديد"])
         
@@ -339,7 +351,7 @@ if not st.session_state.logged_in:
 
         with tab_google:
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("### 🌐 التسجيل الفوري عبر حساب Google")
+            st.markdown("<h3 style='font-size: 24px; font-weight: 800;'>🌐 التسجيل الفوري عبر حساب Google</h3>", unsafe_allow_html=True)
             st.info("عند إدخال بريدك، يتم تقديم الطلب للأدمن للموافقة والتفعيل.")
             
             g_email_input = st.text_input("أدخل بريد Google الخاص بك:", placeholder="example@gmail.com", key="g_input")
