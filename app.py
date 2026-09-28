@@ -56,7 +56,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. الالتقاط التلقائي للـ IP (للخلفية فقط) ---
+# --- 2. الالتقاط التلقائي للـ IP ---
 def get_user_ip():
     try:
         headers = st.context.headers
@@ -75,7 +75,7 @@ GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
 WHATSAPP_NUMBER = "201200686537"
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4mtSIpDvi_N4jCyTc4wuZ7HPw/edit?gid=0#gid=0"
 COINS_PER_CV = 20
-INITIAL_FREE_COINS = 0  # يتم تسجيل المستخدم برصيد 0 أو حسب ما تحدده أنت
+INITIAL_FREE_COINS = 0
 
 RAW_PRIVATE_KEY_NEW = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCyRCwwZzFTebUs\n7lNOlF3jshkeaNNdBoTLufVq0Ff19Q1dg08LwJVlwMJFq83VmrKMR8Vr7eDS2/o4\n8W0aVviObxi6lXvXX+/rbKuu3SQ70XcfNK/KvQ5+8ZFK9AS8TZrQKy6l9wk/aZ/L\nlgnihpnoOhCk4weZIVFG78Bvo/UL2C2WBQcpeGKsMs+XtmfSYvC/7umUasZl4Tsq\nLDHmJCW3VoTJCoiTXL0GH6p8Jvy9iBbD5eE6gJj9wgS2XVSst7E4NsBS9wtNtiO6\nLB5p1010TWxMDMB80FHAh7Md5wfo8SEBhTgzQJAfEG40IJkrM4W/Bk6MBTrSGqSh\nFoOxdQV/AgMBAAECggEAAUXjWuUhwQrZdFyvU5xTn1CiRUlSWRO21w2Y5w5d0m/R\njJ1nbxoM9xENUhoL+j6Ej+PjUQX92QOhIc73jHyagcnhT1PJ8pvIxtGb2D/UBmlU\nhHCH4NbAx79J3lMnxYB4XowwZRcCheVnMrj7kRaM+s+PVt4YK8vFHNCRezqcgV0i\nxv2b9ncfvfpIMGk8goPqXUGYKjrJ/+9iotfa62xqiZin+Iu5VdHTQzbqNGXfjuem\ncGkda5jjwWEXRF0hlmDWmhWcb4P52jOZ3cvPG0Tq0MD6OiSFfYHDub+3IyN6cy6G\nYjZTMDwg1yZbpqNxmwl9JdPFeMij5wkTrOtFvgargQKBgQDmCKrfO5id90CNHtdn\nA/3AH9piAyJyjolSJjEqisiCOMO2yEjYntoalArPE2fC5DBxcB3A0qtzvB5bZy5B\nOUCMQe3UfYu7aHeygvS3mRZ0+grv855MFCUC+MO9XDDuLnTbtS1NImeQFC1E/TXE\npaZSyeXGpA8Q+FnhExOqw8eW0QKBgQDGY5Ft588+olW5V0VWRoEnO3QGkdrM4Yaj\n9617t55lIO3YSSDukFHn5NsxHk+pA1kZQoV76dngL6wPWef91snA5tokGzYNEDWn\nJvvUuKwDUv0GrELlE75TbCyAOs987EbmzzzlShw9s83vx9Kg1wEQUrWzXPXJwSYe\nXEMIWtqLTwKBgQDOQr9UYw+5tNZAs4LZcA67ktQyRjVBGuWur2guiTq46UU0Q+pt\nsiJG6q+2deP4MLvvO2SyXTQ3FlryAlbLTRa/rO4gNmJwrH+HpTzg03f7c6kS9xLd\njMKTI5P/2wZUy3sk9hOkslDCNBVTYugvZ4j3eul5b+nCga21z3E3EU2JwQKBgGYM\n8dJHXCQr/UzJx7EJs4Yq3xRCEvsxR8EwttzdJ2198ts/QuF0+6z93IL3xKJ8Rmjn\n/yIuuRTJcQi0htHcmwvPtIa+OJ+fpvnE4+YY2OMc3WuBUSflcBIZowqTNghcwlwY\nXorUBJL42wZtE7wI3VM4OJ97QjP2V1VmwFSb56+hAoGAJJoKgsBK5+Sw8ZDeCEGr\nD5EoboILVJK4kCkG6e2Ly7ofYsmphyzyIdlMv71rvduat43t6ECoaVn5tpluY2Z8\n1174dNSGpFemyTHW/UoFTfpSA1edKEO6NEWVgYBN5eDF/EeCMR2wg7UMW0ZxkjMI\net1ZTgrapfYMdXLaeXtah3g=\n-----END PRIVATE KEY-----\n"
 
@@ -135,7 +135,15 @@ def init_db():
 
 init_db()
 
-# --- 5. حماية الجلسات وتثبيتها ضد الـ Refresh ---
+def fetch_user_coins(email):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT coins FROM users WHERE email = ?", (email.strip().lower(),))
+    res = cursor.fetchone()
+    conn.close()
+    return res[0] if res else 0
+
+# --- 5. حماية الجلسات وتثبيتها ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_email' not in st.session_state:
@@ -144,19 +152,22 @@ if 'role' not in st.session_state:
     st.session_state.role = "user"
 if 'last_analysis' not in st.session_state:
     st.session_state.last_analysis = None
+if 'current_coins' not in st.session_state:
+    st.session_state.current_coins = 0
 
 query_params = st.query_params
 if not st.session_state.logged_in and "user" in query_params:
     saved_user = query_params["user"]
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT email, is_approved, role FROM users WHERE email = ?", (saved_user,))
+    cursor.execute("SELECT email, is_approved, role, coins FROM users WHERE email = ?", (saved_user,))
     user = cursor.fetchone()
     conn.close()
     if user and (user[1] == 1 or user[2] == 'admin'):
         st.session_state.logged_in = True
         st.session_state.user_email = user[0]
         st.session_state.role = user[2]
+        st.session_state.current_coins = user[3]
 
 # --- 6. دمج الوظائف المساعدة ---
 def login_user(email, password):
@@ -187,11 +198,13 @@ def register_user(email, password, is_google=False):
         return False, "هذا البريد مسجل لدينا بالفعل!"
 
 def update_user_coins(email, new_coins):
+    email_clean = email.strip().lower()
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET coins = ? WHERE email = ?", (email.strip().lower(), new_coins))
+    cursor.execute("UPDATE users SET coins = ? WHERE email = ?", (new_coins, email_clean))
     conn.commit()
     conn.close()
+    st.session_state.current_coins = new_coins
 
 def approve_user_db(email):
     conn = get_db_connection()
@@ -291,6 +304,7 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.user_email = email
                             st.session_state.role = role
+                            st.session_state.current_coins = coins
                             st.query_params["user"] = email
                             st.rerun()
                     else:
@@ -304,7 +318,7 @@ if not st.session_state.logged_in:
                     g_clean = g_email_input.strip().lower()
                     conn = get_db_connection()
                     cursor = conn.cursor()
-                    cursor.execute("SELECT email, is_approved, role FROM users WHERE email = ?", (g_clean,))
+                    cursor.execute("SELECT email, is_approved, role, coins FROM users WHERE email = ?", (g_clean,))
                     user = cursor.fetchone()
                     conn.close()
                     
@@ -318,6 +332,7 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.user_email = g_clean
                             st.session_state.role = user[2]
+                            st.session_state.current_coins = user[3]
                             st.query_params["user"] = g_clean
                             st.rerun()
 
@@ -337,19 +352,15 @@ if not st.session_state.logged_in:
 else:
     visitor_ip = get_user_ip()
     
+    # تحديث الكوينز من قاعدة البيانات في كل تحميل لضمان المزامنة الدقيقة
+    current_coins = fetch_user_coins(st.session_state.user_email)
+    st.session_state.current_coins = current_coins
+    
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
-        # تم إخفاء الـ IP تماماً من العرض هنا بناءً على طلبك
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT coins FROM users WHERE email = ?", (st.session_state.user_email,))
-        user_rec = cursor.fetchone()
-        current_coins = user_rec[0] if user_rec else 0
-        conn.close()
-        
-        st.metric(label="🪙 رصيد الكوينز", value=f"{current_coins}")
-        st.metric(label="📄 الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
+        st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
+        st.metric(label="📄 عدد الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
         
         if st.button("🚪 تسجيل الخروج"):
             st.session_state.logged_in = False
@@ -364,11 +375,131 @@ else:
         whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
         st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#25D366; color:white; font-weight:800; padding:12px; border-radius:8px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
 
-    if st.session_state.role == 'admin':
-        st.title("👑 لوحة إدارة النظام - دكتور فوزي")
-        tab_pending, tab_active, tab_app = st.tabs(["⏳ الطلبات المعلقة", "🟢 المستخدمون النشطون", "🚀 فحص الـ CV"])
+    # --- واجهة الفحص الرئيسية ---
+    st.title("📄 نظام فحص وتحليل الـ CV")
+    
+    uploaded_file = st.file_uploader("قم برفع ملف السيرة الذاتية (PDF)", type=["pdf"])
 
-        # تبويب الطلبات المعلقة منفصل تماماً
+    if uploaded_file is not None:
+        if st.button("🚀 بدء تحليل السيرة الذاتية الآن", type="primary"):
+            if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
+                st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
+            else:
+                # 1. الخصم المباشر والتحديث الفوري في اللحظة نفسها
+                if st.session_state.role != 'admin':
+                    new_balance = current_coins - COINS_PER_CV
+                    update_user_coins(st.session_state.user_email, new_balance)
+                    remaining_scans = new_balance // COINS_PER_CV
+                    st.toast(f"🪙 تم خصم {COINS_PER_CV} كوين بنجاح! الرصيد المتبقي: {new_balance} كوين ({remaining_scans} فحص)", icon="🎉")
+                
+                with st.spinner("🔍 جاري فحص وتحليل السيرة الذاتية..."):
+                    extracted_text = ""
+                    try:
+                        uploaded_file.seek(0)
+                        with pdfplumber.open(uploaded_file) as pdf:
+                            for page in pdf.pages:
+                                t = page.extract_text()
+                                if t:
+                                    extracted_text += t + "\n"
+                    except Exception:
+                        pass
+
+                    if not extracted_text.strip():
+                        st.error("❌ تعذر قراءة النص داخل الملف.")
+                    else:
+                        pdf_images = convert_pdf_to_images(uploaded_file)
+                        lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
+                        name = lines[0] if lines else "غير محدد"
+                        
+                        email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
+                        email = email_m.group(0) if email_m else "غير مذكور"
+                        
+                        phone_m = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}', extracted_text)
+                        phone = phone_m.group(0).strip() if phone_m else "غير مذكور"
+                        
+                        score = np.random.randint(68, 89)
+                        ai_analysis = analyze_cv_with_ai(extracted_text)
+                        cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
+
+                        append_to_google_sheet_silent(
+                            name, "Applicant", email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
+                        )
+
+                        st.session_state.last_analysis = {
+                            'pdf_images': pdf_images,
+                            'score': score,
+                            'cat_scores': cat_scores,
+                            'ai_analysis': ai_analysis,
+                            'name': name,
+                            'job_title': "Applicant",
+                            'email': email,
+                            'phone': phone
+                        }
+                        # إعادة التنشيط لتحديث الـ Sidebar بنفس اللحظة وبدون أي lag
+                        st.rerun()
+
+    # --- عرض بطاقة تنبيه الخصم والرصيد المتبقي إن وجدت نتيجة ---
+    if st.session_state.last_analysis:
+        res = st.session_state.last_analysis
+        
+        # عرض معلومات الرصيد المتبقي بشكل مميز وجذاب للمستخدم
+        rem_scans = current_coins // COINS_PER_CV if st.session_state.role != 'admin' else "غير محدود"
+        st.info(f"💡 **تنبيه الرصيد:** رصيدك الحالي الآن هو **{current_coins} كوين** (متبقي لديك **{rem_scans}** عملية فحص أخرى).")
+        st.divider()
+
+        col_pdf, col_stats = st.columns([1.1, 1])
+
+        with col_pdf:
+            st.subheader("📄 معاينة الـ CV")
+            if res['pdf_images']:
+                for img_bytes in res['pdf_images']:
+                    st.image(img_bytes, use_container_width=True)
+
+        with col_stats:
+            st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
+            fig_circle = render_score_circle(res['score'])
+            st.pyplot(fig_circle)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("📊 تفاصيل التوافق مع النظام")
+            fig_bars = render_category_bars(res['cat_scores'])
+            st.pyplot(fig_bars)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("📝 التقرير والتحليل التفصيلي")
+            st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
+
+        st.divider()
+        st.subheader("📋 البيانات المستخرجة وخيارات التنزيل")
+        
+        df_data = pd.DataFrame([{
+            "الاسم": res['name'],
+            "التخصص": res['job_title'],
+            "البريد الإلكتروني": res['email'],
+            "الهاتف": res['phone'],
+            "درجة ATS": f"{res['score']}%"
+        }])
+        st.table(df_data)
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_data.to_excel(writer, index=False, sheet_name='CV Analysis')
+        excel_data = output.getvalue()
+        
+        st.download_button(
+            label="📥 تنزيل شيت إكسيل الخاص بك (Excel)",
+            data=excel_data,
+            file_name=f"CV_Analysis_{res['name']}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    # --- لوحة التحكم الخاصة بالأدمن (تظهر فقط لحسابك) ---
+    if st.session_state.role == 'admin':
+        st.divider()
+        st.subheader("👑 لوحة إدارة النظام - دكتور فوزي")
+        tab_pending, tab_active = st.tabs(["⏳ الطلبات المعلقة", "🟢 المستخدمون النشطون"])
+
+        # 1. تبويب الطلبات المعلقة
         with tab_pending:
             all_users = get_all_users()
             pending_users = [u for u in all_users if u[2] == 0]
@@ -386,7 +517,7 @@ else:
             else:
                 st.info("لا توجد أي طلبات معلقة حالياً.")
 
-        # تبويب المستخدمين النشطين منفصل تماماً
+        # 2. تبويب المستخدمين النشطين
         with tab_active:
             all_users = get_all_users()
             active_users = [u for u in all_users if u[2] == 1]
@@ -406,114 +537,3 @@ else:
                             st.rerun()
             else:
                 st.caption("لا يوجد مستخدمون نشطون حالياً.")
-
-    if st.session_state.role == 'user' or (st.session_state.role == 'admin' and 'tab_app' in locals()):
-        st.title("📄 نظام فحص وتحليل الـ CV")
-        
-        uploaded_file = st.file_uploader("قم برفع ملف السيرة الذاتية (PDF)", type=["pdf"])
-
-        if uploaded_file is not None:
-            if st.button("🚀 بدء تحليل السيرة الذاتية الآن", type="primary"):
-                if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
-                    st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
-                else:
-                    # النص التوضيحي للتحميل بدون ذكر الـ IP تماماً
-                    with st.spinner("🔍 جاري فحص وتحليل السيرة الذاتية..."):
-                        extracted_text = ""
-                        try:
-                            uploaded_file.seek(0)
-                            with pdfplumber.open(uploaded_file) as pdf:
-                                for page in pdf.pages:
-                                    t = page.extract_text()
-                                    if t:
-                                        extracted_text += t + "\n"
-                        except Exception:
-                            pass
-
-                        if not extracted_text.strip():
-                            st.error("❌ تعذر قراءة النص داخل الملف.")
-                        else:
-                            # خصم الكوينز تلقائياً للمستخدم العادي
-                            if st.session_state.role != 'admin':
-                                update_user_coins(st.session_state.user_email, current_coins - COINS_PER_CV)
-
-                            pdf_images = convert_pdf_to_images(uploaded_file)
-                            lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
-                            name = lines[0] if lines else "غير محدد"
-                            
-                            email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
-                            email = email_m.group(0) if email_m else "غير مذكور"
-                            
-                            phone_m = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}', extracted_text)
-                            phone = phone_m.group(0).strip() if phone_m else "غير مذكور"
-                            
-                            score = np.random.randint(68, 89)
-                            ai_analysis = analyze_cv_with_ai(extracted_text)
-                            cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
-
-                            # حفظ البيانات والـ IP في شيت جوجل بسرية
-                            append_to_google_sheet_silent(
-                                name, "Applicant", email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
-                            )
-
-                            st.session_state.last_analysis = {
-                                'pdf_images': pdf_images,
-                                'score': score,
-                                'cat_scores': cat_scores,
-                                'ai_analysis': ai_analysis,
-                                'name': name,
-                                'job_title': "Applicant",
-                                'email': email,
-                                'phone': phone
-                            }
-
-        # --- 9. عرض النتائج المحفوظة ---
-        if st.session_state.last_analysis:
-            res = st.session_state.last_analysis
-            st.divider()
-
-            col_pdf, col_stats = st.columns([1.1, 1])
-
-            with col_pdf:
-                st.subheader("📄 معاينة الـ CV")
-                if res['pdf_images']:
-                    for img_bytes in res['pdf_images']:
-                        st.image(img_bytes, use_container_width=True)
-
-            with col_stats:
-                st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
-                fig_circle = render_score_circle(res['score'])
-                st.pyplot(fig_circle)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.subheader("📊 تفاصيل التوافق مع النظام")
-                fig_bars = render_category_bars(res['cat_scores'])
-                st.pyplot(fig_bars)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.subheader("📝 التقرير والتحليل التفصيلي")
-                st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
-
-            st.divider()
-            st.subheader("📋 البيانات المستخرجة وخيارات التنزيل")
-            
-            df_data = pd.DataFrame([{
-                "الاسم": res['name'],
-                "التخصص": res['job_title'],
-                "البريد الإلكتروني": res['email'],
-                "الهاتف": res['phone'],
-                "درجة ATS": f"{res['score']}%"
-            }])
-            st.table(df_data)
-
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_data.to_excel(writer, index=False, sheet_name='CV Analysis')
-            excel_data = output.getvalue()
-            
-            st.download_button(
-                label="📥 تنزيل شيت إكسيل الخاص بك (Excel)",
-                data=excel_data,
-                file_name=f"CV_Analysis_{res['name']}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
