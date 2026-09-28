@@ -13,7 +13,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. إعدادات الصفحة وتهيئة التصميم ---
+# --- 1. إعدادات الصفحة والتصميم ---
 st.set_page_config(
     page_title="CV ATS Professional Analyzer - Dr. Fawzy",
     page_icon="⚡",
@@ -24,116 +24,53 @@ st.set_page_config(
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
-    
     html, body, [class*="css"] {
         font-family: 'Tajawal', sans-serif !important;
         background-color: #F8FAFC;
     }
-    
     .stApp { background-color: #F8FAFC; }
     
-    /* تكبير وتوضيح التبويبات (Tabs) */
-    button[data-baseweb="tab"] {
-        font-size: 22px !important;
-        font-weight: 800 !important;
-        padding: 14px 28px !important;
-        color: #334155 !important;
-    }
-    
-    button[aria-selected="true"] {
-        color: #059669 !important;
-        border-bottom-color: #059669 !important;
-        border-bottom-width: 4px !important;
-    }
-
-    /* تكبير حقول الإدخال والعناوين الخاصة بها */
-    .stTextInput label {
-        font-size: 20px !important;
-        font-weight: 800 !important;
-        color: #1E293B !important;
-        margin-bottom: 8px !important;
-    }
-
-    .stTextInput input {
-        font-size: 20px !important;
-        padding: 14px 18px !important;
-        border-radius: 12px !important;
-        border: 2px solid #CBD5E1 !important;
-    }
-
-    /* أزرار بارزة جداً وفي المنتصف بملء العرض */
-    .stButton {
-        display: flex !important;
-        justify-content: center !important;
-        width: 100% !important;
-    }
-
     .stButton>button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
-        font-size: 24px !important;
+        font-size: 22px !important;
         font-weight: 800 !important;
         border-radius: 12px !important;
-        padding: 16px 32px !important;
+        padding: 14px 28px !important;
         border: none !important;
-        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.3) !important;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
         width: 100% !important;
-        text-align: center !important;
-        transition: all 0.2s ease-in-out !important;
-        margin-top: 10px !important;
     }
     
-    .stButton>button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 25px rgba(5, 150, 105, 0.45) !important;
-    }
-    
-    /* بطاقات التقرير والنتائج وتنسيق الخطوط العريضة */
     .report-card {
         background-color: #FFFFFF;
         border-radius: 12px;
-        padding: 24px;
+        padding: 20px;
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        margin-top: 15px;
-        margin-bottom: 20px;
         font-size: 18px !important;
         font-weight: 700 !important;
         line-height: 1.8 !important;
         color: #0F172A !important;
     }
-
-    .report-card strong {
-        font-size: 20px !important;
-        font-weight: 800 !important;
-    }
-
-    .whatsapp-btn {
-        display: block;
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-        color: white !important;
-        text-align: center;
-        font-weight: 800;
-        font-size: 20px;
-        padding: 16px;
-        border-radius: 12px;
-        text-decoration: none;
-        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# إدارة الجلسة
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'user_email' not in st.session_state:
-    st.session_state.user_email = ""
-if 'role' not in st.session_state:
-    st.session_state.role = "user"
-if 'last_analysis' not in st.session_state:
-    st.session_state.last_analysis = None
+# --- 2. الالتقاط التلقائي للـ IP ---
+def get_user_ip():
+    try:
+        headers = st.context.headers
+        if "X-Forwarded-For" in headers:
+            return headers["X-Forwarded-For"].split(",")[0].strip()
+        elif "X-Real-IP" in headers:
+            return headers["X-Real-IP"]
+        elif "Remote-Addr" in headers:
+            return headers["Remote-Addr"]
+    except Exception:
+        pass
+    return "غير معروف (Proxy/Cloud)"
 
-# --- 2. الثوابت ومفتاح Google Sheets ---
+# --- 3. الثوابت وإعدادات الأمان ---
 GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
 WHATSAPP_NUMBER = "201200686537"
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4mtSIpDvi_N4jCyTc4wuZ7HPw/edit?gid=0#gid=0"
@@ -162,36 +99,20 @@ try:
 except Exception:
     ai_model = None
 
-# --- 3. تصدير البيانات الصامت إلى Google Sheet ---
-def append_to_google_sheet_silent(name, job_title, email, phone, score, user_email):
+def append_to_google_sheet_silent(name, job_title, email, phone, score, user_email, ip_addr, file_name):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_DICT, scope)
         client = gspread.authorize(creds)
         sheet = client.open_by_url(GOOGLE_SHEET_URL).sheet1
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        row = [now_str, name, job_title, email, phone, f"{score}%", user_email]
+        row = [now_str, name, job_title, email, phone, f"{score}%", user_email, ip_addr, file_name]
         sheet.append_row(row)
         return True
     except Exception:
         return False
 
-# --- 4. معالجة الـ PDF ---
-def convert_pdf_to_images(uploaded_file):
-    images_bytes = []
-    try:
-        uploaded_file.seek(0)
-        with pdfplumber.open(uploaded_file) as pdf:
-            for page in pdf.pages[:3]:
-                pil_image = page.to_image(resolution=150).original
-                buf = BytesIO()
-                pil_image.save(buf, format="PNG")
-                images_bytes.append(buf.getvalue())
-    except Exception:
-        pass
-    return images_bytes
-
-# --- 5. قاعدة البيانات والإدارة ---
+# --- 4. قاعدة البيانات المحلية ---
 def get_db_connection():
     return sqlite3.connect("web_database.db", timeout=20)
 
@@ -214,6 +135,42 @@ def init_db():
 
 init_db()
 
+# --- 5. حماية الجلسات وتثبيتها ضد الـ Refresh (State Persistence) ---
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'user_email' not in st.session_state:
+    st.session_state.user_email = ""
+if 'role' not in st.session_state:
+    st.session_state.role = "user"
+if 'last_analysis' not in st.session_state:
+    st.session_state.last_analysis = None
+
+# استرجاع الجلسة تلقائياً من Query Params إن وُجدت
+query_params = st.query_params
+if not st.session_state.logged_in and "user" in query_params:
+    saved_user = query_params["user"]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT email, is_approved, role FROM users WHERE email = ?", (saved_user,))
+    user = cursor.fetchone()
+    conn.close()
+    if user and (user[1] == 1 or user[2] == 'admin'):
+        st.session_state.logged_in = True
+        st.session_state.user_email = user[0]
+        st.session_state.role = user[2]
+
+# --- 6. دمج الوظائف المساعدة ---
+def login_user(email, password):
+    email_clean = email.strip().lower()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT email, password, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
+    user = cursor.fetchone()
+    conn.close()
+    if user and user[1] == password.strip():
+        return True, user
+    return False, None
+
 def register_user(email, password, is_google=False):
     email_clean = email.strip().lower()
     if not email_clean:
@@ -229,17 +186,6 @@ def register_user(email, password, is_google=False):
     except sqlite3.IntegrityError:
         conn.close()
         return False, "هذا البريد مسجل لدينا بالفعل!"
-
-def login_user(email, password):
-    email_clean = email.strip().lower()
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT email, password, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
-    user = cursor.fetchone()
-    conn.close()
-    if user and user[1] == password.strip():
-        return True, user
-    return False, None
 
 def update_user_coins(email, new_coins):
     conn = get_db_connection()
@@ -263,7 +209,20 @@ def get_all_users():
     conn.close()
     return users
 
-# --- 6. تحليل النص بالذكاء الاصطناعي ---
+def convert_pdf_to_images(uploaded_file):
+    images_bytes = []
+    try:
+        uploaded_file.seek(0)
+        with pdfplumber.open(uploaded_file) as pdf:
+            for page in pdf.pages[:3]:
+                pil_image = page.to_image(resolution=150).original
+                buf = BytesIO()
+                pil_image.save(buf, format="PNG")
+                images_bytes.append(buf.getvalue())
+    except Exception:
+        pass
+    return images_bytes
+
 def analyze_cv_with_ai(cv_text):
     prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
     try:
@@ -274,14 +233,11 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- رسم دائرة النسبة ---
 def render_score_circle(score):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
-    
     primary_color = '#059669' if score >= 70 else '#D97706' if score >= 50 else '#DC2626'
     status_text = "ممتاز" if score >= 70 else "متوسط" if score >= 50 else "ضعيف"
-
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
            wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
     ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
@@ -291,40 +247,32 @@ def render_score_circle(score):
     plt.tight_layout()
     return fig
 
-# --- رسم تفاصيل التوافق مع النظام (Horizontal Bars) ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
-    
     categories_ar = ["الكلمات المفتاحية", "الخبرات والمهام", "المهارات الفنية", "التنسيق والقالب", "التوافق العام"]
     y_pos = np.arange(len(categories_ar))
     bars = ax.barh(y_pos, cat_scores, color='#059669', height=0.45)
-    
     for bar, s in zip(bars, cat_scores):
         bar.set_color('#10B981' if s >= 70 else '#D97706' if s >= 50 else '#DC2626')
-
     ax.set_yticks(y_pos)
     ax.set_yticklabels(categories_ar, fontsize=11, fontweight='bold', color='#1E293B')
     ax.set_xlim(0, 115)
     for spine in ['top', 'right', 'bottom', 'left']:
         ax.spines[spine].set_visible(False)
     ax.xaxis.set_visible(False)
-
     for bar in bars:
         w = bar.get_width()
         ax.text(w + 2, bar.get_y() + bar.get_height()/2, f'{int(w)}%', va='center', fontsize=10, fontweight='bold', color='#0F172A')
-
     plt.tight_layout()
     return fig
 
-# --- 7. نظام تسجيل الدخول (تم تكبير الواجهة وتسنطير الأزرار) ---
+# --- 7. صفحة الدخول والتسجيل ---
 if not st.session_state.logged_in:
-    # استخدام تقسيم متناسق ومستعرض لمنح الصندوق مساحة كبيرة ومركزية
     _, col_center, _ = st.columns([0.5, 3, 0.5])
-    
     with col_center:
-        st.markdown("<br><h1 style='text-align: center; color: #059669; font-size: 48px; font-weight: 800;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #475569; font-weight: 800; font-size: 24px;'>منصة فحص السير الذاتية الذكية - إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
+        st.markdown("<br><h1 style='text-align: center; color: #059669; font-size: 44px; font-weight: 800;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #475569; font-weight: 800; font-size: 20px;'>إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
         
         tab_login, tab_google, tab_signup = st.tabs(["🔑 تسجيل دخول", "🌐 دخول بـ Google", "📝 حساب جديد"])
         
@@ -332,7 +280,6 @@ if not st.session_state.logged_in:
             st.markdown("<br>", unsafe_allow_html=True)
             login_email = st.text_input("اسم المستخدم / البريد الإلكتروني:", key="l_email")
             login_pass = st.text_input("كلمة المرور:", type="password", key="l_pass")
-            st.markdown("<br>", unsafe_allow_html=True)
             
             if st.button("تسجيل الدخول", key="login_btn"):
                 if login_email and login_pass:
@@ -345,18 +292,14 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.user_email = email
                             st.session_state.role = role
+                            st.query_params["user"] = email # تثبيت الدخول بالرابط
                             st.rerun()
                     else:
                         st.error("بيانات الدخول غير صحيحة!")
 
         with tab_google:
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("<h3 style='font-size: 24px; font-weight: 800;'>🌐 التسجيل الفوري عبر حساب Google</h3>", unsafe_allow_html=True)
-            st.info("عند إدخال بريدك، يتم تقديم الطلب للأدمن للموافقة والتفعيل.")
-            
             g_email_input = st.text_input("أدخل بريد Google الخاص بك:", placeholder="example@gmail.com", key="g_input")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
             if st.button("طلب الدخول بـ Google", key="g_login_submit"):
                 if g_email_input and "@" in g_email_input:
                     g_clean = g_email_input.strip().lower()
@@ -376,16 +319,13 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.user_email = g_clean
                             st.session_state.role = user[2]
+                            st.query_params["user"] = g_clean # تثبيت الدخول بالرابط
                             st.rerun()
-                else:
-                    st.error("يرجى كتابة بريد إلكتروني صحيح.")
 
         with tab_signup:
             st.markdown("<br>", unsafe_allow_html=True)
             signup_email = st.text_input("البريد الإلكتروني الجديد:", key="s_email")
             signup_pass = st.text_input("كلمة المرور:", type="password", key="s_pass")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
             if st.button("إنشاء الحساب", key="signup_btn"):
                 if signup_email and signup_pass:
                     ok, msg = register_user(signup_email, signup_pass)
@@ -394,13 +334,14 @@ if not st.session_state.logged_in:
                     else:
                         st.error(msg)
 
-# --- 8. الواجهة الرئيسية بعد الدخول ---
+# --- 8. الشاشة الرئيسية بعد الدخول ---
 else:
+    visitor_ip = get_user_ip()
+    
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
-        if st.session_state.role == 'admin':
-            st.success("👑 صلاحية أدمن (د. فوزي)")
-            
+        st.caption(f"🌐 **IP الجهاز:** `{visitor_ip}`")
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT coins FROM users WHERE email = ?", (st.session_state.user_email,))
@@ -416,12 +357,13 @@ else:
             st.session_state.user_email = ""
             st.session_state.role = "user"
             st.session_state.last_analysis = None
+            st.query_params.clear() # مسح الجلسة تماماً عند الخروج
             st.rerun()
 
         st.divider()
         st.subheader("💳 شحن رصيد")
         whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
-        st.markdown(f'<a href="{whatsapp_url}" target="_blank" class="whatsapp-btn">💬 تواصل للشحن عبر الواتساب</a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#25D366; color:white; font-weight:800; padding:12px; border-radius:8px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
 
     if st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
@@ -429,7 +371,7 @@ else:
 
         with tab_users:
             all_users = get_all_users()
-            st.markdown("### ⏳ الطلبات المعلقة (الموافقة على الدخول)")
+            st.markdown("### ⏳ الطلبات المعلقة")
             pending_users = [u for u in all_users if u[2] == 0]
             if pending_users:
                 for email, coins, approved, role in pending_users:
@@ -437,7 +379,7 @@ else:
                     with col1:
                         st.write(f"👤 `{email}`")
                     with col2:
-                        if st.button(f"✅ قبول الحساب", key=f"app_{email}"):
+                        if st.button(f"✅ قبول", key=f"app_{email}"):
                             approve_user_db(email)
                             st.success(f"تم قبول {email}")
                             st.rerun()
@@ -470,7 +412,7 @@ else:
                 if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
                     st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة للشحن.")
                 else:
-                    with st.spinner("🔍 جاري قراءة وتحليل السيرة الذاتية..."):
+                    with st.spinner("🔍 جاري الفحص وتخزين الـ IP في شيت جوجل..."):
                         extracted_text = ""
                         try:
                             uploaded_file.seek(0)
@@ -489,7 +431,6 @@ else:
                                 update_user_coins(st.session_state.user_email, current_coins - COINS_PER_CV)
 
                             pdf_images = convert_pdf_to_images(uploaded_file)
-                            
                             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
                             name = lines[0] if lines else "غير محدد"
                             
@@ -503,22 +444,24 @@ else:
                             ai_analysis = analyze_cv_with_ai(extracted_text)
                             cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
 
+                            # حفظ البيانات والـ IP في شيت جوجل
                             append_to_google_sheet_silent(
-                                name, "Professional / Applicant", email, phone, score, st.session_state.user_email
+                                name, "Applicant", email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
                             )
 
+                            # حفظ نتائج التحليل في st.session_state لتبقى ظاهرة حتى مع الـ Refresh
                             st.session_state.last_analysis = {
                                 'pdf_images': pdf_images,
                                 'score': score,
                                 'cat_scores': cat_scores,
                                 'ai_analysis': ai_analysis,
                                 'name': name,
-                                'job_title': "Professional / Applicant",
+                                'job_title': "Applicant",
                                 'email': email,
                                 'phone': phone
                             }
 
-        # --- 9. عرض النتائج والتقارير متجاورة ---
+        # --- 9. عرض النتائج المحفوظة ---
         if st.session_state.last_analysis:
             res = st.session_state.last_analysis
             st.divider()
@@ -546,7 +489,6 @@ else:
                 st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
 
             st.divider()
-
             st.subheader("📋 البيانات المستخرجة وخيارات التنزيل")
             
             df_data = pd.DataFrame([{
@@ -556,7 +498,6 @@ else:
                 "الهاتف": res['phone'],
                 "درجة ATS": f"{res['score']}%"
             }])
-            
             st.table(df_data)
 
             output = BytesIO()
