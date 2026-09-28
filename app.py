@@ -36,8 +36,8 @@ st.markdown("""
     .stButton>button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
-        font-size: 16px !important;
-        font-weight: 700 !important;
+        font-size: 18px !important;
+        font-weight: 800 !important;
         border-radius: 10px !important;
         padding: 12px 24px !important;
         border: none !important;
@@ -50,14 +50,23 @@ st.markdown("""
         box-shadow: 0 6px 20px rgba(5, 150, 105, 0.35) !important;
     }
     
-    /* بطاقات التقرير والنتائج */
+    /* بطاقات التقرير والنتائج وتنسيق الخطوط العريضة */
     .report-card {
         background-color: #FFFFFF;
         border-radius: 12px;
-        padding: 20px;
+        padding: 24px;
         border: 1px solid #E2E8F0;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        margin-bottom: 15px;
+        margin-bottom: 20px;
+        font-size: 19px !important;
+        font-weight: 700 !important;
+        line-height: 1.8 !important;
+        color: #0F172A !important;
+    }
+
+    .report-card strong {
+        font-size: 21px !important;
+        font-weight: 800 !important;
     }
 
     .whatsapp-btn {
@@ -65,7 +74,8 @@ st.markdown("""
         background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
         color: white !important;
         text-align: center;
-        font-weight: 700;
+        font-weight: 800;
+        font-size: 16px;
         padding: 12px;
         border-radius: 10px;
         text-decoration: none;
@@ -84,21 +94,21 @@ if 'role' not in st.session_state:
 if 'last_analysis' not in st.session_state:
     st.session_state.last_analysis = None
 
-# --- 2. الثوابت وإصلاح مفتاح Google Sheets ---
+# --- 2. الثوابت ومفتاح Google Sheets الجديد ---
 GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
 WHATSAPP_NUMBER = "201200686537"
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4mtSIpDvi_N4jCyTc4wuZ7HPw/edit?gid=0#gid=0"
 COINS_PER_CV = 20
 INITIAL_FREE_COINS = 200
 
-# إصلاح تنسيق الـ Private Key لتجنب خطأ Invalid JWT Signature
-RAW_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDGoEHAcQH5w3nV\nrMLtddMLIRhpR9AySz9ICtOoS5yhPGLOTKuBCSJvlJ2NTWoGd+ovfPG7Qmejf9Nd\n8KFFH1GZAeJFezQKqH9bpu0sTI/ZHBiXxnNNNy6XX4WV/YA29YW6jjl3/lXPru5L\neN118a8m7KV/70hekXmzgfWYl+WaQg82FZYhcAaS6FTtnuy3g5tD1Z5kdpGyhlXb\nMQmR0rxCxCUvfaMdSGBYr4/VhTUmAOUUAaQQ9/9u+ut+2ELMxO3KSfwHdbVoMnUQ\ndYOB1YDEb7TjDRTvtvH56vaOoi4TM4NeM8NAH7OUfCtnbjoGPFX8CL9EmT7jSy2d\nyux036srAgMBAAECggEADkCIh0T0ldXbY6QiVoSaUJWe2UsQWtOAZmx0dIJ8aitZ\nkaD5u2gK4wPAbFeuMGmhUaf+9mdU5WvyIC74e2u8YKS8dizZdpxRiyOGqCOUPMlh\n0F4qftNjUfRGMxV+AjOK1XCIGh6TTLQqIBs7lM9zOHFJjM0AHd0FZQaBt2HK1U8g\nxSs1EJWJBBOoYrfa6qVL+uAUsqp99E6fnwI55OsuX6pRYlqgunu2KbHsa2ZDL5Qp\ng4EAdAjJDKGn+4Rj5dgWW9zZdLgXcNerogw6k8yX0hNGxqbm5OVKXmXYClmkjxqg\n07xXrfOPAsMbTQeZj2F98Bs0all9YzTfxzGt8zNrzQKBgQDobkLWgTdXyRYj0+Ak\nx2P6iFFqt0hHlaoOnyS6aomdq9qKjaD/AGv69YQkRtF8sFhCdmVdtd2PWFsKbgo0\njIDgPi/Ach+Xbt4C3BPntxWq706zmJdudAYAKyDzADpxwmQq+AY/VUkjWvb9WLA8\nJd9YMBgu1FwMRgt//1Mh5OAW5QKBgQDaxHMBLpME4LQI2X50Lu9HcWTsLzm+DUJo\n89DQAMQN6YpqHh5YN/KZaLe7E05LueEVZDsTewTSKj0X2WSOqQHs8OKbF9ML0nRL\nWbTys9kyiIAlQHXWnk3uv7mhjiZ30VuVkaNhcP2LOd4hSMCgiqVgyfHllAm2bYu7\nAeBHgb4IzwKBgA5DpgpwB6t1hcxRFnJrYjFf6E86TE9IWhVnouNl4mgwwcq7AmRj\n7DyMkL2BMx4J3IDHr1Te8mf3ri6nriynaslYR6nx1wp+HVXjl70iuUuyQAw5kyGO\nMUgVXYJMQ0nz+h3A9vEwFLr8vCe0J6ypTlmlKfbFxZhjPBVw3/M2jqIZAoGBAMpd\nNIDgY1D8xqz0+3tfuymcJB4yZTh/rXHGL99pBfJUmRwmdi1mu3vbGTHs3t0/uYz/\nJYKUplX+inrYNqOchNJ31TZgKHJkH/1fovlrEjwjdl5/LUH1N+Pk6EMgakclm5FU\nogxN58t1IRwq3zziY66Pv7p9YSqmVL4NMzkSNAaTAoGASmDLn8OJ9VWLNafpXiV+\nNW+FKSs9uknEKky8NmUhlnOD1DjHl27qUPV6cvKhuJUsqLLD+MeVh5jG6c/UYjxm\n9AR7A37fUBi+1xfr4dUOC3bxTVhkSYWagWqeSxYZv22UUi1nk+ktm/MC6TdQbnIM\n6yih2xCrwH80uhx6I6yAIEc=\n-----END PRIVATE KEY-----\n"
+# المفتاح الخاص الجديد الذي زودتنا به يا دكتور فوزي
+RAW_PRIVATE_KEY_NEW = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCyRCwwZzFTebUs\n7lNOlF3jshkeaNNdBoTLufVq0Ff19Q1dg08LwJVlwMJFq83VmrKMR8Vr7eDS2/o4\n8W0aVviObxi6lXvXX+/rbKuu3SQ70XcfNK/KvQ5+8ZFK9AS8TZrQKy6l9wk/aZ/L\nlgnihpnoOhCk4weZIVFG78Bvo/UL2C2WBQcpeGKsMs+XtmfSYvC/7umUasZl4Tsq\nLDHmJCW3VoTJCoiTXL0GH6p8Jvy9iBbD5eE6gJj9wgS2XVSst7E4NsBS9wtNtiO6\nLB5p1010TWxMDMB80FHAh7Md5wfo8SEBhTgzQJAfEG40IJkrM4W/Bk6MBTrSGqSh\nFoOxdQV/AgMBAAECggEAAUXjWuUhwQrZdFyvU5xTn1CiRUlSWRO21w2Y5w5d0m/R\njJ1nbxoM9xENUhoL+j6Ej+PjUQX92QOhIc73jHyagcnhT1PJ8pvIxtGb2D/UBmlU\nhHCH4NbAx79J3lMnxYB4XowwZRcCheVnMrj7kRaM+s+PVt4YK8vFHNCRezqcgV0i\nxv2b9ncfvfpIMGk8goPqXUGYKjrJ/+9iotfa62xqiZin+Iu5VdHTQzbqNGXfjuem\ncGkda5jjwWEXRF0hlmDWmhWcb4P52jOZ3cvPG0Tq0MD6OiSFfYHDub+3IyN6cy6G\nYjZTMDwg1yZbpqNxmwl9JdPFeMij5wkTrOtFvgargQKBgQDmCKrfO5id90CNHtdn\nA/3AH9piAyJyjolSJjEqisiCOMO2yEjYntoalArPE2fC5DBxcB3A0qtzvB5bZy5B\nOUCMQe3UfYu7aHeygvS3mRZ0+grv855MFCUC+MO9XDDuLnTbtS1NImeQFC1E/TXE\npaZSyeXGpA8Q+FnhExOqw8eW0QKBgQDGY5Ft588+olW5V0VWRoEnO3QGkdrM4Yaj\n9617t55lIO3YSSDukFHn5NsxHk+pA1kZQoV76dngL6wPWef91snA5tokGzYNEDWn\nJvvUuKwDUv0GrELlE75TbCyAOs987EbmzzzlShw9s83vx9Kg1wEQUrWzXPXJwSYe\nXEMIWtqLTwKBgQDOQr9UYw+5tNZAs4LZcA67ktQyRjVBGuWur2guiTq46UU0Q+pt\nsiJG6q+2deP4MLvvO2SyXTQ3FlryAlbLTRa/rO4gNmJwrH+HpTzg03f7c6kS9xLd\njMKTI5P/2wZUy3sk9hOkslDCNBVTYugvZ4j3eul5b+nCga21z3E3EU2JwQKBgGYM\n8dJHXCQr/UzJx7EJs4Yq3xRCEvsxR8EwttzdJ2198ts/QuF0+6z93IL3xKJ8Rmjn\n/yIuuRTJcQi0htHcmwvPtIa+OJ+fpvnE4+YY2OMc3WuBUSflcBIZowqTNghcwlwY\nXorUBJL42wZtE7wI3VM4OJ97QjP2V1VmwFSb56+hAoGAJJoKgsBK5+Sw8ZDeCEGr\nD5EoboILVJK4kCkG6e2Ly7ofYsmphyzyIdlMv71rvduat43t6ECoaVn5tpluY2Z8\n1174dNSGpFemyTHW/UoFTfpSA1edKEO6NEWVgYBN5eDF/EeCMR2wg7UMW0ZxkjMI\net1ZTgrapfYMdXLaeXtah3g=\n-----END PRIVATE KEY-----\n"
 
 CREDENTIALS_DICT = {
   "type": "service_account",
   "project_id": "cv-ats-checker",
-  "private_key_id": "d8444889667100910e291cb962bb73b1370c61e7",
-  "private_key": RAW_PRIVATE_KEY.replace('\\n', '\n'),
+  "private_key_id": "131ba1b368f7856b65fc5b496b0a4595eb66147a",
+  "private_key": RAW_PRIVATE_KEY_NEW.replace('\\n', '\n'),
   "client_email": "cv-sheet-bot@cv-ats-checker.iam.gserviceaccount.com",
   "client_id": "115860396992619540199",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -114,8 +124,8 @@ try:
 except Exception:
     ai_model = None
 
-# --- 3. تصدير البيانات الشامل ---
-def append_to_google_sheet(name, job_title, email, phone, score, user_email):
+# --- 3. تصدير البيانات الشامل والصامت إلى Google Sheet الخاص بدكتور فوزي ---
+def append_to_google_sheet_silent(name, job_title, email, phone, score, user_email):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
         creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_DICT, scope)
@@ -124,9 +134,9 @@ def append_to_google_sheet(name, job_title, email, phone, score, user_email):
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         row = [now_str, name, job_title, email, phone, f"{score}%", user_email]
         sheet.append_row(row)
-        return True, "✅ تم تصدير البيانات بنجاح إلى Google Sheets الخاص بك!"
-    except Exception as e:
-        return False, f"⚠️ خطأ في التصدير: {str(e)}"
+        return True
+    except Exception:
+        return False
 
 # --- 4. معالجة الـ PDF ---
 def convert_pdf_to_images(uploaded_file):
@@ -173,7 +183,6 @@ def register_user(email, password, is_google=False):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # جميع تسجيلات التقديم (سواء عادي أو جوجل) تتطلب موافقة الأدمن (is_approved = 0)
         cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES (?, ?, ?, 0, 'user')",
                        (email_clean, 'google_oauth' if is_google else password.strip(), INITIAL_FREE_COINS))
         conn.commit()
@@ -227,38 +236,47 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-def render_score_charts(score, cat_scores):
+# --- رسم دائرة النسبة فقط بحجم كبير ---
+def render_score_circle(score):
     plt.style.use('default')
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8.5, 3.2), facecolor='#FFFFFF')
+    fig, ax = plt.subplots(figsize=(4.5, 4.5), facecolor='#FFFFFF')
     
     primary_color = '#059669' if score >= 70 else '#D97706' if score >= 50 else '#DC2626'
     status_text = "ممتاز" if score >= 70 else "متوسط" if score >= 50 else "ضعيف"
 
-    ax1.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
-            wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
-    ax1.text(0, 0.12, f"{score}%", fontsize=22, fontweight='bold', ha='center', va='center', color='#0F172A')
-    ax1.text(0, -0.15, status_text, fontsize=10, fontweight='bold', ha='center', va='center', color=primary_color)
-    ax1.text(0, -0.35, "ATS MATCH", fontsize=8, fontweight='bold', ha='center', va='center', color='#64748B')
+    ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
+           wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
+    ax.text(0, 0.12, f"{score}%", fontsize=30, fontweight='bold', ha='center', va='center', color='#0F172A')
+    ax.text(0, -0.15, status_text, fontsize=14, fontweight='bold', ha='center', va='center', color=primary_color)
+    ax.text(0, -0.35, "ATS MATCH", fontsize=11, fontweight='bold', ha='center', va='center', color='#64748B')
+    ax.axis('equal')
+    plt.tight_layout()
+    return fig
 
+# --- رسم تفاصيل التوافق مع النظام (Horizontal Bars) ---
+def render_category_bars(cat_scores):
+    plt.style.use('default')
+    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='#FFFFFF')
+    
     categories_ar = ["الكلمات المفتاحية", "الخبرات والمهام", "المهارات الفنية", "التنسيق والقالب", "التوافق العام"]
     y_pos = np.arange(len(categories_ar))
-    bars = ax2.barh(y_pos, cat_scores, color='#059669', height=0.45)
+    bars = ax.barh(y_pos, cat_scores, color='#059669', height=0.45)
     
     for bar, s in zip(bars, cat_scores):
         bar.set_color('#10B981' if s >= 70 else '#D97706' if s >= 50 else '#DC2626')
 
-    ax2.set_yticks(y_pos)
-    ax2.set_yticklabels(categories_ar, fontsize=9, fontweight='bold', color='#1E293B')
-    ax2.set_xlim(0, 115)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(categories_ar, fontsize=12, fontweight='bold', color='#1E293B')
+    ax.set_xlim(0, 115)
     for spine in ['top', 'right', 'bottom', 'left']:
-        ax2.spines[spine].set_visible(False)
-    ax2.xaxis.set_visible(False)
+        ax.spines[spine].set_visible(False)
+    ax.xaxis.set_visible(False)
 
     for bar in bars:
         w = bar.get_width()
-        ax2.text(w + 2, bar.get_y() + bar.get_height()/2, f'{int(w)}%', va='center', fontsize=9, fontweight='bold', color='#0F172A')
+        ax.text(w + 2, bar.get_y() + bar.get_height()/2, f'{int(w)}%', va='center', fontsize=11, fontweight='bold', color='#0F172A')
 
-    ax2.set_title("تفاصيل التوافق مع النظام", fontsize=10, fontweight='bold', color='#64748B', pad=10)
+    ax.set_title("تفاصيل التوافق مع النظام", fontsize=13, fontweight='bold', color='#64748B', pad=10)
     plt.tight_layout()
     return fig
 
@@ -268,7 +286,7 @@ if not st.session_state.logged_in:
     
     with col_center:
         st.markdown("<br><h1 style='text-align: center; color: #059669;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B;'>منصة فحص السير الذاتية الذكية - إشراف د. فوزي علي</p>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #64748B; font-weight: bold;'>منصة فحص السير الذاتية الذكية - إشراف د. فوزي علي</p>", unsafe_allow_html=True)
         
         tab_login, tab_google, tab_signup = st.tabs(["🔑 تسجيل دخول", "🌐 دخول بـ Google", "📝 حساب جديد"])
         
@@ -430,7 +448,6 @@ else:
 
                             pdf_images = convert_pdf_to_images(uploaded_file)
                             
-                            # استخراج البيانات التلقائية
                             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
                             name = lines[0] if lines else "غير محدد"
                             
@@ -442,8 +459,12 @@ else:
                             
                             score = np.random.randint(68, 89)
                             ai_analysis = analyze_cv_with_ai(extracted_text)
-                            
                             cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
+
+                            # التصدير الصامت تماماً إلى Google Sheets الخاص بدكتور فوزي في الخلفية
+                            append_to_google_sheet_silent(
+                                name, "Professional / Applicant", email, phone, score, st.session_state.user_email
+                            )
 
                             st.session_state.last_analysis = {
                                 'pdf_images': pdf_images,
@@ -456,36 +477,42 @@ else:
                                 'phone': phone
                             }
 
-        # --- 9. عرض التقرير والنتائج بالتصميم الجديد (بجانب الـ PDF وتنسيق بعرض الشاشة) ---
+        # --- 9. عرض النتائج والتقرير بالترتيب العمودي والخط العريض المطلوبة ---
         if st.session_state.last_analysis:
             res = st.session_state.last_analysis
             st.divider()
 
-            # تقسيم الشاشة: معاينة الـ PDF بجانب التقرير كاملاً
-            col_pdf_preview, col_main_report = st.columns([1, 1.6])
+            # أولاً (في الأعلى): عرض الـ PDF بجانب السكور والنسبة المئوية بحجم كبير
+            col_pdf, col_score = st.columns([1.2, 1])
 
-            with col_pdf_preview:
+            with col_pdf:
                 st.subheader("📄 معاينة الـ CV")
                 if res['pdf_images']:
                     for img_bytes in res['pdf_images']:
                         st.image(img_bytes, use_container_width=True)
 
-            with col_main_report:
-                # 1. الرسوم البيانية بعرض الجزء المخصص
-                st.markdown("<div class='report-card'>", unsafe_allow_html=True)
-                fig = render_score_charts(res['score'], res['cat_scores'])
-                st.pyplot(fig)
-                st.markdown("</div>", unsafe_allow_html=True)
-
-                # 2. النقاط والتوصيات تحته مباشرة
-                st.markdown("<div class='report-card'>", unsafe_allow_html=True)
-                st.markdown(res['ai_analysis'])
-                st.markdown("</div>", unsafe_allow_html=True)
+            with col_score:
+                st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
+                fig_circle = render_score_circle(res['score'])
+                st.pyplot(fig_circle)
 
             st.divider()
-            
-            # الجدول وخيارات التصدير المتعددة أسفل المعاينة
-            st.subheader("📊 البيانات المستخرجة وخيارات التصدير")
+
+            # ثانياً (تحته): الرسوم البيانية والأشرطة التفصيلية (تفاصيل التوافق مع النظام)
+            st.subheader("📊 تفاصيل التوافق مع النظام")
+            fig_bars = render_category_bars(res['cat_scores'])
+            st.pyplot(fig_bars)
+
+            st.divider()
+
+            # ثالثاً (تحتهم): النصوص والبيانات (أبرز نقاط القوة، الأخطاء، والنصائح) بخط كبير وعريض
+            st.subheader("📝 التقرير والتحليل التفصيلي")
+            st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
+
+            st.divider()
+
+            # قسم البيانات المستخرجة مع زر التصدير الاختياري/التنزيل للمستخدم فقط
+            st.subheader("📋 البيانات المستخرجة وخيارات التنزيل")
             
             df_data = pd.DataFrame([{
                 "الاسم": res['name'],
@@ -497,28 +524,15 @@ else:
             
             st.table(df_data)
 
-            col_exp_gsheet, col_exp_excel = st.columns(2)
+            # خيار تنزيل ملف Excel مباشر للمستخدم فقط عند رغبته
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df_data.to_excel(writer, index=False, sheet_name='CV Analysis')
+            excel_data = output.getvalue()
             
-            with col_exp_gsheet:
-                if st.button("📊 تصدير فوراً لـ Google Sheets الخاص بك"):
-                    ok, msg = append_to_google_sheet(
-                        res['name'], res['job_title'], res['email'], res['phone'], res['score'], st.session_state.user_email
-                    )
-                    if ok:
-                        st.success(msg)
-                    else:
-                        st.error(msg)
-
-            with col_exp_excel:
-                # خيار تنزيل ملف Excel مباشر
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df_data.to_excel(writer, index=False, sheet_name='CV Analysis')
-                excel_data = output.getvalue()
-                
-                st.download_button(
-                    label="📥 تنزيل شيت إكسيل (Excel)",
-                    data=excel_data,
-                    file_name=f"CV_Analysis_{res['name']}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            st.download_button(
+                label="📥 تنزيل شيت إكسيل الخاص بك (Excel)",
+                data=excel_data,
+                file_name=f"CV_Analysis_{res['name']}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
