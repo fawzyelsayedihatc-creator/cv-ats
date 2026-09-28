@@ -5,3 +5,7 @@ matplotlib
 pdfplumber
 openpyxl
 google-generativeai
+pypdfium2
+gspread
+oauth2client
+extra-streamlit-components
