@@ -5,6 +5,7 @@ import random
 import sqlite3
 import datetime
 import pdfplumber
+import fitz  # PyMuPDF للعرض الآمن لصورة الـ PDF
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,13 +42,6 @@ st.markdown("""
         display: block; background-color: #25D366; color: white !important;
         text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; text-decoration: none;
     }
-    .google-btn {
-        display: block; background-color: #FFFFFF; color: #374151 !important;
-        border: 1px solid #D1D5DB; text-align: center; font-weight: bold;
-        padding: 12px; border-radius: 8px; text-decoration: none; margin-bottom: 15px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    .google-btn:hover { background-color: #F9FAFB; border-color: #9CA3AF; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -57,11 +51,6 @@ WHATSAPP_NUMBER = "201200686537"
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4mtSIpDvi_N4jCyTc4wuZ7HPw/edit?gid=0#gid=0"
 COINS_PER_CV = 20
 INITIAL_FREE_COINS = 200
-
-# Google OAuth Credentials
-GOOGLE_CLIENT_ID = "314230893314-os23f7amf3m3g3hetd32n66599j7lmc5.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET = "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"
-REDIRECT_URI = "https://cv-ats-e8vky3cly9kk6kkoappb4tl.streamlit.app"
 
 # بيانات الاعتماد لـ Service Account
 CREDENTIALS_DICT = {
@@ -84,7 +73,7 @@ try:
 except Exception:
     ai_model = None
 
-# --- دالة التصدير التلقائي لشيت جوجل الموحد ---
+# --- دالة التصدير التلقائي لشيت جوجل ---
 def append_to_google_sheet(name, job_title, email, phone, score, user_email):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -94,14 +83,29 @@ def append_to_google_sheet(name, job_title, email, phone, score, user_email):
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         row = [now_str, name, job_title, email, phone, f"{score}%", user_email]
         sheet.append_row(row)
-        return True
+        return True, None
     except Exception as e:
-        print(f"Error appending to Google Sheet: {e}")
-        return False
+        return False, str(e)
 
-# --- قاعدة البيانات المحلية ---
+# --- دالة تحويل أول صفحة من الـ PDF إلى صورة ---
+def get_pdf_first_page_image(file_bytes):
+    try:
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        if len(doc) > 0:
+            page = doc[0]
+            pix = page.get_pixmap(dpi=150)
+            img = Image.open(BytesIO(pix.tobytes("png")))
+            return img
+    except Exception:
+        pass
+    return None
+
+# --- إدارة الاتصال بقاعدة البيانات ---
+def get_db_connection():
+    return sqlite3.connect("web_database.db", timeout=20)
+
 def init_db():
-    conn = sqlite3.connect("web_database.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -112,39 +116,24 @@ def init_db():
             role TEXT DEFAULT 'user'
         )
     """)
-    cursor.execute("DELETE FROM users WHERE email IN ('fawzi ali', 'fawzi.elsayed.ihatc@gmail.com')")
-    cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES ('fawzi ali', '112003112003', 99999, 1, 'admin')")
-    cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES ('fawzi.elsayed.ihatc@gmail.com', 'google_oauth', 99999, 1, 'admin')")
+    cursor.execute("INSERT OR REPLACE INTO users (email, password, coins, is_approved, role) VALUES ('fawzi ali', '112003112003', 99999, 1, 'admin')")
+    cursor.execute("INSERT OR REPLACE INTO users (email, password, coins, is_approved, role) VALUES ('fawzi.elsayed.ihatc@gmail.com', 'google_oauth', 99999, 1, 'admin')")
+    cursor.execute("INSERT OR REPLACE INTO users (email, password, coins, is_approved, role) VALUES ('fawziali2040@gmail.com', 'google_oauth', 99999, 1, 'admin')")
     conn.commit()
     conn.close()
 
 init_db()
 
-def register_or_get_google_user(email):
-    conn = sqlite3.connect("web_database.db")
-    cursor = conn.cursor()
-    email_clean = email.strip().lower()
-    cursor.execute("SELECT email, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
-    user = cursor.fetchone()
-    
-    if not user:
-        is_admin = 1 if email_clean in ["fawzi.elsayed.ihatc@gmail.com", "fawziali2040@gmail.com"] else 0
-        role = "admin" if is_admin else "user"
-        cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES (?, 'google_oauth', ?, 1, ?)",
-                       (email_clean, INITIAL_FREE_COINS, role))
-        conn.commit()
-        cursor.execute("SELECT email, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
-        user = cursor.fetchone()
-    
-    conn.close()
-    return user
-
 def register_user(email, password):
-    conn = sqlite3.connect("web_database.db")
+    email_clean = email.strip().lower()
+    if not email_clean or not password.strip():
+        return False, "يرجى ملء جميع الحقول المطلوبة."
+    
+    conn = get_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES (?, ?, ?, 0, 'user')",
-                       (email.strip().lower(), password.strip(), INITIAL_FREE_COINS))
+                       (email_clean, password.strip(), INITIAL_FREE_COINS))
         conn.commit()
         conn.close()
         return True, "تم تقديم طلب التسجيل بنجاح! بانتظار موافقة د. فوزي لتفعيل الحساب."
@@ -153,9 +142,10 @@ def register_user(email, password):
         return False, "هذا البريد أو اليوزر مسجل بالفعل!"
 
 def login_user(email, password):
-    conn = sqlite3.connect("web_database.db")
+    email_clean = email.strip().lower()
+    conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT email, password, coins, is_approved, role FROM users WHERE email = ?", (email.strip().lower(),))
+    cursor.execute("SELECT email, password, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
     user = cursor.fetchone()
     conn.close()
     
@@ -164,21 +154,21 @@ def login_user(email, password):
     return False, None
 
 def update_user_coins(email, new_coins):
-    conn = sqlite3.connect("web_database.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET coins = ? WHERE email = ?", (new_coins, email.strip().lower()))
     conn.commit()
     conn.close()
 
 def approve_user_db(email):
-    conn = sqlite3.connect("web_database.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET is_approved = 1 WHERE email = ?", (email.strip().lower(),))
     conn.commit()
     conn.close()
 
 def get_all_users():
-    conn = sqlite3.connect("web_database.db")
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT email, coins, is_approved, role FROM users WHERE role != 'admin'")
     users = cursor.fetchall()
@@ -302,49 +292,34 @@ if not st.session_state.logged_in:
         st.markdown("<h2 style='text-align: center;'>📄 CV Checker</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #64748B;'>أهلاً بك في منصة فحص وتقييم السير الذاتية</p>", unsafe_allow_html=True)
         
-        google_auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={GOOGLE_CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope=https://www.googleapis.com/auth/userinfo.email%20https://www.googleapis.com/auth/userinfo.profile&prompt=select_account"
-        
-        st.markdown(f'<a href="{google_auth_url}" target="_self" class="google-btn">🌐 التسجيل المباشر بواسطة Google</a>', unsafe_allow_html=True)
-        
-        query_params = st.query_params
-        if "code" in query_params:
-            st.info("جاري إكمال تسجيل الدخول بواسطة Google...")
-            user_data = register_or_get_google_user("fawzi.elsayed.ihatc@gmail.com") 
-            email, coins, is_approved, role = user_data
-            
-            st.session_state.logged_in = True
-            st.session_state.user_email = email
-            st.session_state.role = role
-            st.query_params.clear()
-            st.rerun()
-
-        st.markdown("<p style='text-align: center; color: #94A3B8;'>أو استخدام الحساب المحلي:</p>", unsafe_allow_html=True)
-
         tab_login, tab_signup = st.tabs(["🔑 تسجيل الدخول", "📝 تسجيل حساب جديد"])
         
         with tab_login:
             login_email = st.text_input("اسم المستخدم / البريد الإلكتروني:", key="l_email")
             login_pass = st.text_input("كلمة المرور:", type="password", key="l_pass")
             
-            if st.button("دخول الآن"):
-                success, user_data = login_user(login_email, login_pass)
-                if success:
-                    email, password, coins, is_approved, role = user_data
-                    if is_approved == 0 and role != 'admin':
-                        st.warning("⏳ حسابك قيد المراجعة بانتظار موافقة د. فوزي لتفعيله.")
+            if st.button("دخول الآن", key="login_btn"):
+                if login_email and login_pass:
+                    success, user_data = login_user(login_email, login_pass)
+                    if success:
+                        email, password, coins, is_approved, role = user_data
+                        if is_approved == 0 and role != 'admin':
+                            st.warning("⏳ حسابك قيد المراجعة بانتظار موافقة د. فوزي لتفعيله.")
+                        else:
+                            st.session_state.logged_in = True
+                            st.session_state.user_email = email
+                            st.session_state.role = role
+                            st.rerun()
                     else:
-                        st.session_state.logged_in = True
-                        st.session_state.user_email = email
-                        st.session_state.role = role
-                        st.rerun()
+                        st.error("اسم المستخدم أو كلمة المرور غير صحيحة!")
                 else:
-                    st.error("إسم المستخدم أو كلمة المرور غير صحيحة!")
+                    st.warning("يرجى إدخال اسم المستخدم وكلمة المرور.")
 
         with tab_signup:
             signup_email = st.text_input("اسم المستخدم أو البريد الجديد:", key="s_email")
             signup_pass = st.text_input("كلمة المرور الجديدة:", type="password", key="s_pass")
             
-            if st.button("إنشاء حساب جديد"):
+            if st.button("إنشاء حساب جديد", key="signup_btn"):
                 if signup_email and signup_pass:
                     ok, msg = register_user(signup_email, signup_pass)
                     if ok:
@@ -416,7 +391,7 @@ else:
                 st.header("👤 حسابك الحالي")
                 st.info(f"**المستخدم:**\n`{st.session_state.user_email}`")
                 
-                conn = sqlite3.connect("web_database.db")
+                conn = get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute("SELECT coins FROM users WHERE email = ?", (st.session_state.user_email,))
                 user_rec = cursor.fetchone()
@@ -437,7 +412,7 @@ else:
                 whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
                 st.markdown(f'<a href="{whatsapp_url}" target="_blank" class="whatsapp-btn">💬 تواصل للشحن عبر الواتساب</a>', unsafe_allow_html=True)
         else:
-            conn = sqlite3.connect("web_database.db")
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT coins FROM users WHERE email = ?", (st.session_state.user_email,))
             user_rec = cursor.fetchone()
@@ -454,8 +429,10 @@ else:
                 if current_coins < COINS_PER_CV:
                     st.error("⚠️ رصيدك غير كافٍ لإجراء الفحص! يرجى التواصل لشحن الرصيد.")
                 else:
-                    with st.spinner("🔍 جاري قراءة وتحليل الملف وتصدير البيانات لشيت جوجل..."):
+                    with st.spinner("🔍 جاري قراءة وتحليل الملف وتصدير البيانات..."):
                         file_bytes = uploaded_file.getvalue()
+                        
+                        # قراءة النص بالـ pdfplumber
                         extracted_text = ""
                         try:
                             with pdfplumber.open(uploaded_file) as pdf:
@@ -469,13 +446,16 @@ else:
                         if not extracted_text.strip():
                             st.error("❌ لم نتمكن من قراءة النص داخل الملف.")
                         else:
+                            # خصم الكوينز
                             new_coins = current_coins - COINS_PER_CV
                             update_user_coins(st.session_state.user_email, new_coins)
 
+                            # استخراج البيانات والتحليل
                             name, email, phone, job_title, score = parse_cv_details(extracted_text)
                             ai_analysis = analyze_cv_with_ai(extracted_text)
 
-                            sheet_ok = append_to_google_sheet(name, job_title, email, phone, score, st.session_state.user_email)
+                            # التصدير لشيت جوجل بدون إظهار أي رسالة نجاح
+                            sheet_ok, err_msg = append_to_google_sheet(name, job_title, email, phone, score, st.session_state.user_email)
 
                             cat_scores = [
                                 max(30, score - random.randint(5, 15)),
@@ -485,10 +465,20 @@ else:
                                 score
                             ]
 
-                            st.success("✅ تم التقييم وحفظ البيانات في شيت جوجل بنجاح!")
+                            # استخراج صورة الصفحة الأولى للـ PDF
+                            pdf_preview_img = get_pdf_first_page_image(file_bytes)
+
                             st.divider()
 
-                            col_rep1, col_rep2 = st.columns([1, 1])
+                            # عرض الملف (الصورة) بالجنب والبيانات بجانبه
+                            col_preview, col_rep1, col_rep2 = st.columns([1.2, 1.5, 1.3])
+
+                            with col_preview:
+                                st.subheader("📄 معينة الـ CV")
+                                if pdf_preview_img:
+                                    st.image(pdf_preview_img, use_container_width=True)
+                                else:
+                                    st.info("معاينة المستند غير متاحة.")
 
                             with col_rep1:
                                 fig = render_score_charts(score, cat_scores)
