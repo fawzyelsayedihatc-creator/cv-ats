@@ -13,7 +13,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. إعدادات الصفحة وتهيئة التصميم (UI/UX الاحترافي) ---
+# --- 1. إعدادات الصفحة وتهيئة التصميم ---
 st.set_page_config(
     page_title="CV ATS Professional Analyzer - Dr. Fawzy",
     page_icon="⚡",
@@ -101,7 +101,6 @@ GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4m
 COINS_PER_CV = 20
 INITIAL_FREE_COINS = 200
 
-# المفتاح الخاص الجديد الذي زودتنا به يا دكتور فوزي
 RAW_PRIVATE_KEY_NEW = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCyRCwwZzFTebUs\n7lNOlF3jshkeaNNdBoTLufVq0Ff19Q1dg08LwJVlwMJFq83VmrKMR8Vr7eDS2/o4\n8W0aVviObxi6lXvXX+/rbKuu3SQ70XcfNK/KvQ5+8ZFK9AS8TZrQKy6l9wk/aZ/L\nlgnihpnoOhCk4weZIVFG78Bvo/UL2C2WBQcpeGKsMs+XtmfSYvC/7umUasZl4Tsq\nLDHmJCW3VoTJCoiTXL0GH6p8Jvy9iBbD5eE6gJj9wgS2XVSst7E4NsBS9wtNtiO6\nLB5p1010TWxMDMB80FHAh7Md5wfo8SEBhTgzQJAfEG40IJkrM4W/Bk6MBTrSGqSh\nFoOxdQV/AgMBAAECggEAAUXjWuUhwQrZdFyvU5xTn1CiRUlSWRO21w2Y5w5d0m/R\njJ1nbxoM9xENUhoL+j6Ej+PjUQX92QOhIc73jHyagcnhT1PJ8pvIxtGb2D/UBmlU\nhHCH4NbAx79J3lMnxYB4XowwZRcCheVnMrj7kRaM+s+PVt4YK8vFHNCRezqcgV0i\nxv2b9ncfvfpIMGk8goPqXUGYKjrJ/+9iotfa62xqiZin+Iu5VdHTQzbqNGXfjuem\ncGkda5jjwWEXRF0hlmDWmhWcb4P52jOZ3cvPG0Tq0MD6OiSFfYHDub+3IyN6cy6G\nYjZTMDwg1yZbpqNxmwl9JdPFeMij5wkTrOtFvgargQKBgQDmCKrfO5id90CNHtdn\nA/3AH9piAyJyjolSJjEqisiCOMO2yEjYntoalArPE2fC5DBxcB3A0qtzvB5bZy5B\nOUCMQe3UfYu7aHeygvS3mRZ0+grv855MFCUC+MO9XDDuLnTbtS1NImeQFC1E/TXE\npaZSyeXGpA8Q+FnhExOqw8eW0QKBgQDGY5Ft588+olW5V0VWRoEnO3QGkdrM4Yaj\n9617t55lIO3YSSDukFHn5NsxHk+pA1kZQoV76dngL6wPWef91snA5tokGzYNEDWn\nJvvUuKwDUv0GrELlE75TbCyAOs987EbmzzzlShw9s83vx9Kg1wEQUrWzXPXJwSYe\nXEMIWtqLTwKBgQDOQr9UYw+5tNZAs4LZcA67ktQyRjVBGuWur2guiTq46UU0Q+pt\nsiJG6q+2deP4MLvvO2SyXTQ3FlryAlbLTRa/rO4gNmJwrH+HpTzg03f7c6kS9xLd\njMKTI5P/2wZUy3sk9hOkslDCNBVTYugvZ4j3eul5b+nCga21z3E3EU2JwQKBgGYM\n8dJHXCQr/UzJx7EJs4Yq3xRCEvsxR8EwttzdJ2198ts/QuF0+6z93IL3xKJ8Rmjn\n/yIuuRTJcQi0htHcmwvPtIa+OJ+fpvnE4+YY2OMc3WuBUSflcBIZowqTNghcwlwY\nXorUBJL42wZtE7wI3VM4OJ97QjP2V1VmwFSb56+hAoGAJJoKgsBK5+Sw8ZDeCEGr\nD5EoboILVJK4kCkG6e2Ly7ofYsmphyzyIdlMv71rvduat43t6ECoaVn5tpluY2Z8\n1174dNSGpFemyTHW/UoFTfpSA1edKEO6NEWVgYBN5eDF/EeCMR2wg7UMW0ZxkjMI\net1ZTgrapfYMdXLaeXtah3g=\n-----END PRIVATE KEY-----\n"
 
 CREDENTIALS_DICT = {
@@ -124,7 +123,7 @@ try:
 except Exception:
     ai_model = None
 
-# --- 3. تصدير البيانات الشامل والصامت إلى Google Sheet الخاص بدكتور فوزي ---
+# --- 3. تصدير البيانات الصامت إلى Google Sheet ---
 def append_to_google_sheet_silent(name, job_title, email, phone, score, user_email):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -236,19 +235,19 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- رسم دائرة النسبة فقط بحجم كبير ---
+# --- رسم دائرة النسبة ---
 def render_score_circle(score):
     plt.style.use('default')
-    fig, ax = plt.subplots(figsize=(4.5, 4.5), facecolor='#FFFFFF')
+    fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
     
     primary_color = '#059669' if score >= 70 else '#D97706' if score >= 50 else '#DC2626'
     status_text = "ممتاز" if score >= 70 else "متوسط" if score >= 50 else "ضعيف"
 
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
            wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
-    ax.text(0, 0.12, f"{score}%", fontsize=30, fontweight='bold', ha='center', va='center', color='#0F172A')
-    ax.text(0, -0.15, status_text, fontsize=14, fontweight='bold', ha='center', va='center', color=primary_color)
-    ax.text(0, -0.35, "ATS MATCH", fontsize=11, fontweight='bold', ha='center', va='center', color='#64748B')
+    ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
+    ax.text(0, -0.15, status_text, fontsize=13, fontweight='bold', ha='center', va='center', color=primary_color)
+    ax.text(0, -0.35, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
     ax.axis('equal')
     plt.tight_layout()
     return fig
@@ -256,7 +255,7 @@ def render_score_circle(score):
 # --- رسم تفاصيل التوافق مع النظام (Horizontal Bars) ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
-    fig, ax = plt.subplots(figsize=(10, 3.5), facecolor='#FFFFFF')
+    fig, ax = plt.subplots(figsize=(5.5, 4.0), facecolor='#FFFFFF')
     
     categories_ar = ["الكلمات المفتاحية", "الخبرات والمهام", "المهارات الفنية", "التنسيق والقالب", "التوافق العام"]
     y_pos = np.arange(len(categories_ar))
@@ -266,7 +265,7 @@ def render_category_bars(cat_scores):
         bar.set_color('#10B981' if s >= 70 else '#D97706' if s >= 50 else '#DC2626')
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(categories_ar, fontsize=12, fontweight='bold', color='#1E293B')
+    ax.set_yticklabels(categories_ar, fontsize=11, fontweight='bold', color='#1E293B')
     ax.set_xlim(0, 115)
     for spine in ['top', 'right', 'bottom', 'left']:
         ax.spines[spine].set_visible(False)
@@ -274,9 +273,8 @@ def render_category_bars(cat_scores):
 
     for bar in bars:
         w = bar.get_width()
-        ax.text(w + 2, bar.get_y() + bar.get_height()/2, f'{int(w)}%', va='center', fontsize=11, fontweight='bold', color='#0F172A')
+        ax.text(w + 2, bar.get_y() + bar.get_height()/2, f'{int(w)}%', va='center', fontsize=10, fontweight='bold', color='#0F172A')
 
-    ax.set_title("تفاصيل التوافق مع النظام", fontsize=13, fontweight='bold', color='#64748B', pad=10)
     plt.tight_layout()
     return fig
 
@@ -349,9 +347,8 @@ if not st.session_state.logged_in:
                     else:
                         st.error(msg)
 
-# --- 8. الواجهة الرئيسية والتطبيق بعد الدخول ---
+# --- 8. الواجهة الرئيسية بعد الدخول ---
 else:
-    # Sidebar
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
         if st.session_state.role == 'admin':
@@ -379,7 +376,6 @@ else:
         whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
         st.markdown(f'<a href="{whatsapp_url}" target="_blank" class="whatsapp-btn">💬 تواصل للشحن عبر الواتساب</a>', unsafe_allow_html=True)
 
-    # لوحة الأدمن
     if st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
         tab_users, tab_app = st.tabs(["👥 إدارة المستخدمين والطلبات", "🚀 فحص الـ CV"])
@@ -417,7 +413,6 @@ else:
                         st.success(f"تم التحديث")
                         st.rerun()
 
-    # شاشة فحص الـ CV
     if st.session_state.role == 'user' or (st.session_state.role == 'admin' and 'tab_app' in locals()):
         st.title("📄 نظام فحص وتحليل الـ CV")
         
@@ -461,7 +456,6 @@ else:
                             ai_analysis = analyze_cv_with_ai(extracted_text)
                             cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
 
-                            # التصدير الصامت تماماً إلى Google Sheets الخاص بدكتور فوزي في الخلفية
                             append_to_google_sheet_silent(
                                 name, "Professional / Applicant", email, phone, score, st.session_state.user_email
                             )
@@ -477,13 +471,13 @@ else:
                                 'phone': phone
                             }
 
-        # --- 9. عرض النتائج والتقرير بالترتيب العمودي والخط العريض المطلوبة ---
+        # --- 9. عرض النتائج والمخطط المطلوب ---
         if st.session_state.last_analysis:
             res = st.session_state.last_analysis
             st.divider()
 
-            # أولاً (في الأعلى): عرض الـ PDF بجانب السكور والنسبة المئوية بحجم كبير
-            col_pdf, col_score = st.columns([1.2, 1])
+            # العمود الأيسر للـ PDF والعمود الأيمن يحتوي على دايرة السكور + تفاصيل التوافق كلاهما تحته مباشرة
+            col_pdf, col_stats = st.columns([1.1, 1])
 
             with col_pdf:
                 st.subheader("📄 معاينة الـ CV")
@@ -491,27 +485,25 @@ else:
                     for img_bytes in res['pdf_images']:
                         st.image(img_bytes, use_container_width=True)
 
-            with col_score:
+            with col_stats:
                 st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
                 fig_circle = render_score_circle(res['score'])
                 st.pyplot(fig_circle)
 
-            st.divider()
-
-            # ثانياً (تحته): الرسوم البيانية والأشرطة التفصيلية (تفاصيل التوافق مع النظام)
-            st.subheader("📊 تفاصيل التوافق مع النظام")
-            fig_bars = render_category_bars(res['cat_scores'])
-            st.pyplot(fig_bars)
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.subheader("📊 تفاصيل التوافق مع النظام")
+                fig_bars = render_category_bars(res['cat_scores'])
+                st.pyplot(fig_bars)
 
             st.divider()
 
-            # ثالثاً (تحتهم): النصوص والبيانات (أبرز نقاط القوة، الأخطاء، والنصائح) بخط كبير وعريض
+            # التقرير والتحليل التفصيلي في الأسفل بكامل العرض
             st.subheader("📝 التقرير والتحليل التفصيلي")
             st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
 
             st.divider()
 
-            # قسم البيانات المستخرجة مع زر التصدير الاختياري/التنزيل للمستخدم فقط
+            # جدول واستخراج البيانات
             st.subheader("📋 البيانات المستخرجة وخيارات التنزيل")
             
             df_data = pd.DataFrame([{
@@ -524,7 +516,6 @@ else:
             
             st.table(df_data)
 
-            # خيار تنزيل ملف Excel مباشر للمستخدم فقط عند رغبته
             output = BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df_data.to_excel(writer, index=False, sheet_name='CV Analysis')
