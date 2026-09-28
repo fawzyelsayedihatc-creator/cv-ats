@@ -56,7 +56,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. الالتقاط التلقائي للـ IP ---
+# --- 2. الالتقاط التلقائي للـ IP (للخلفية فقط) ---
 def get_user_ip():
     try:
         headers = st.context.headers
@@ -75,7 +75,7 @@ GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
 WHATSAPP_NUMBER = "201200686537"
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4mtSIpDvi_N4jCyTc4wuZ7HPw/edit?gid=0#gid=0"
 COINS_PER_CV = 20
-INITIAL_FREE_COINS = 200
+INITIAL_FREE_COINS = 0  # يتم تسجيل المستخدم برصيد 0 أو حسب ما تحدده أنت
 
 RAW_PRIVATE_KEY_NEW = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCyRCwwZzFTebUs\n7lNOlF3jshkeaNNdBoTLufVq0Ff19Q1dg08LwJVlwMJFq83VmrKMR8Vr7eDS2/o4\n8W0aVviObxi6lXvXX+/rbKuu3SQ70XcfNK/KvQ5+8ZFK9AS8TZrQKy6l9wk/aZ/L\nlgnihpnoOhCk4weZIVFG78Bvo/UL2C2WBQcpeGKsMs+XtmfSYvC/7umUasZl4Tsq\nLDHmJCW3VoTJCoiTXL0GH6p8Jvy9iBbD5eE6gJj9wgS2XVSst7E4NsBS9wtNtiO6\nLB5p1010TWxMDMB80FHAh7Md5wfo8SEBhTgzQJAfEG40IJkrM4W/Bk6MBTrSGqSh\nFoOxdQV/AgMBAAECggEAAUXjWuUhwQrZdFyvU5xTn1CiRUlSWRO21w2Y5w5d0m/R\njJ1nbxoM9xENUhoL+j6Ej+PjUQX92QOhIc73jHyagcnhT1PJ8pvIxtGb2D/UBmlU\nhHCH4NbAx79J3lMnxYB4XowwZRcCheVnMrj7kRaM+s+PVt4YK8vFHNCRezqcgV0i\nxv2b9ncfvfpIMGk8goPqXUGYKjrJ/+9iotfa62xqiZin+Iu5VdHTQzbqNGXfjuem\ncGkda5jjwWEXRF0hlmDWmhWcb4P52jOZ3cvPG0Tq0MD6OiSFfYHDub+3IyN6cy6G\nYjZTMDwg1yZbpqNxmwl9JdPFeMij5wkTrOtFvgargQKBgQDmCKrfO5id90CNHtdn\nA/3AH9piAyJyjolSJjEqisiCOMO2yEjYntoalArPE2fC5DBxcB3A0qtzvB5bZy5B\nOUCMQe3UfYu7aHeygvS3mRZ0+grv855MFCUC+MO9XDDuLnTbtS1NImeQFC1E/TXE\npaZSyeXGpA8Q+FnhExOqw8eW0QKBgQDGY5Ft588+olW5V0VWRoEnO3QGkdrM4Yaj\n9617t55lIO3YSSDukFHn5NsxHk+pA1kZQoV76dngL6wPWef91snA5tokGzYNEDWn\nJvvUuKwDUv0GrELlE75TbCyAOs987EbmzzzlShw9s83vx9Kg1wEQUrWzXPXJwSYe\nXEMIWtqLTwKBgQDOQr9UYw+5tNZAs4LZcA67ktQyRjVBGuWur2guiTq46UU0Q+pt\nsiJG6q+2deP4MLvvO2SyXTQ3FlryAlbLTRa/rO4gNmJwrH+HpTzg03f7c6kS9xLd\njMKTI5P/2wZUy3sk9hOkslDCNBVTYugvZ4j3eul5b+nCga21z3E3EU2JwQKBgGYM\n8dJHXCQr/UzJx7EJs4Yq3xRCEvsxR8EwttzdJ2198ts/QuF0+6z93IL3xKJ8Rmjn\n/yIuuRTJcQi0htHcmwvPtIa+OJ+fpvnE4+YY2OMc3WuBUSflcBIZowqTNghcwlwY\nXorUBJL42wZtE7wI3VM4OJ97QjP2V1VmwFSb56+hAoGAJJoKgsBK5+Sw8ZDeCEGr\nD5EoboILVJK4kCkG6e2Ly7ofYsmphyzyIdlMv71rvduat43t6ECoaVn5tpluY2Z8\n1174dNSGpFemyTHW/UoFTfpSA1edKEO6NEWVgYBN5eDF/EeCMR2wg7UMW0ZxkjMI\net1ZTgrapfYMdXLaeXtah3g=\n-----END PRIVATE KEY-----\n"
 
@@ -123,7 +123,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             email TEXT PRIMARY KEY,
             password TEXT,
-            coins INTEGER DEFAULT 200,
+            coins INTEGER DEFAULT 0,
             is_approved INTEGER DEFAULT 0,
             role TEXT DEFAULT 'user'
         )
@@ -135,7 +135,7 @@ def init_db():
 
 init_db()
 
-# --- 5. حماية الجلسات وتثبيتها ضد الـ Refresh (State Persistence) ---
+# --- 5. حماية الجلسات وتثبيتها ضد الـ Refresh ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_email' not in st.session_state:
@@ -145,7 +145,6 @@ if 'role' not in st.session_state:
 if 'last_analysis' not in st.session_state:
     st.session_state.last_analysis = None
 
-# استرجاع الجلسة تلقائياً من Query Params إن وُجدت
 query_params = st.query_params
 if not st.session_state.logged_in and "user" in query_params:
     saved_user = query_params["user"]
@@ -292,7 +291,7 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.user_email = email
                             st.session_state.role = role
-                            st.query_params["user"] = email # تثبيت الدخول بالرابط
+                            st.query_params["user"] = email
                             st.rerun()
                     else:
                         st.error("بيانات الدخول غير صحيحة!")
@@ -319,7 +318,7 @@ if not st.session_state.logged_in:
                             st.session_state.logged_in = True
                             st.session_state.user_email = g_clean
                             st.session_state.role = user[2]
-                            st.query_params["user"] = g_clean # تثبيت الدخول بالرابط
+                            st.query_params["user"] = g_clean
                             st.rerun()
 
         with tab_signup:
@@ -340,7 +339,7 @@ else:
     
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
-        st.caption(f"🌐 **IP الجهاز:** `{visitor_ip}`")
+        # تم إخفاء الـ IP تماماً من العرض هنا بناءً على طلبك
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -357,7 +356,7 @@ else:
             st.session_state.user_email = ""
             st.session_state.role = "user"
             st.session_state.last_analysis = None
-            st.query_params.clear() # مسح الجلسة تماماً عند الخروج
+            st.query_params.clear()
             st.rerun()
 
         st.divider()
@@ -367,40 +366,46 @@ else:
 
     if st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
-        tab_users, tab_app = st.tabs(["👥 إدارة المستخدمين والطلبات", "🚀 فحص الـ CV"])
+        tab_pending, tab_active, tab_app = st.tabs(["⏳ الطلبات المعلقة", "🟢 المستخدمون النشطون", "🚀 فحص الـ CV"])
 
-        with tab_users:
+        # تبويب الطلبات المعلقة منفصل تماماً
+        with tab_pending:
             all_users = get_all_users()
-            st.markdown("### ⏳ الطلبات المعلقة")
             pending_users = [u for u in all_users if u[2] == 0]
             if pending_users:
+                st.markdown("### ⏳ طلبات التسجيل بانتظار موافقتك")
                 for email, coins, approved, role in pending_users:
                     col1, col2 = st.columns([3, 1])
                     with col1:
                         st.write(f"👤 `{email}`")
                     with col2:
-                        if st.button(f"✅ قبول", key=f"app_{email}"):
+                        if st.button(f"✅ قبول الحساب", key=f"app_{email}"):
                             approve_user_db(email)
                             st.success(f"تم قبول {email}")
                             st.rerun()
             else:
-                st.caption("لا توجد طلبات معلقة.")
+                st.info("لا توجد أي طلبات معلقة حالياً.")
 
-            st.divider()
-            st.markdown("### 🟢 المستخدمون النشطون")
+        # تبويب المستخدمين النشطين منفصل تماماً
+        with tab_active:
+            all_users = get_all_users()
             active_users = [u for u in all_users if u[2] == 1]
-            for email, coins, approved, role in active_users:
-                col_u1, col_u2, col_u3 = st.columns([2, 2, 2])
-                with col_u1:
-                    st.write(f"👤 `{email}`")
-                with col_u2:
-                    st.write(f"🪙 الرصيد: **{coins}**")
-                with col_u3:
-                    new_c = st.number_input("تعديل الرصيد:", value=coins, step=20, key=f"num_{email}")
-                    if st.button("تحديث", key=f"btn_{email}"):
-                        update_user_coins(email, new_c)
-                        st.success(f"تم التحديث")
-                        st.rerun()
+            if active_users:
+                st.markdown("### 🟢 قائمة الحسابات المفعلة للتحكم بالرصيد")
+                for email, coins, approved, role in active_users:
+                    col_u1, col_u2, col_u3 = st.columns([2, 2, 2])
+                    with col_u1:
+                        st.write(f"👤 `{email}`")
+                    with col_u2:
+                        st.write(f"🪙 الرصيد الحالي: **{coins}**")
+                    with col_u3:
+                        new_c = st.number_input("تعديل الرصيد:", value=coins, step=20, key=f"num_{email}")
+                        if st.button("تحديث الرصيد", key=f"btn_{email}"):
+                            update_user_coins(email, new_c)
+                            st.success(f"تم تحديث رصيد {email} إلى {new_c}")
+                            st.rerun()
+            else:
+                st.caption("لا يوجد مستخدمون نشطون حالياً.")
 
     if st.session_state.role == 'user' or (st.session_state.role == 'admin' and 'tab_app' in locals()):
         st.title("📄 نظام فحص وتحليل الـ CV")
@@ -410,9 +415,10 @@ else:
         if uploaded_file is not None:
             if st.button("🚀 بدء تحليل السيرة الذاتية الآن", type="primary"):
                 if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
-                    st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة للشحن.")
+                    st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
                 else:
-                    with st.spinner("🔍 جاري الفحص وتخزين الـ IP في شيت جوجل..."):
+                    # النص التوضيحي للتحميل بدون ذكر الـ IP تماماً
+                    with st.spinner("🔍 جاري فحص وتحليل السيرة الذاتية..."):
                         extracted_text = ""
                         try:
                             uploaded_file.seek(0)
@@ -427,6 +433,7 @@ else:
                         if not extracted_text.strip():
                             st.error("❌ تعذر قراءة النص داخل الملف.")
                         else:
+                            # خصم الكوينز تلقائياً للمستخدم العادي
                             if st.session_state.role != 'admin':
                                 update_user_coins(st.session_state.user_email, current_coins - COINS_PER_CV)
 
@@ -444,12 +451,11 @@ else:
                             ai_analysis = analyze_cv_with_ai(extracted_text)
                             cat_scores = [score - 5, score + 4, score - 8, score - 12, score]
 
-                            # حفظ البيانات والـ IP في شيت جوجل
+                            # حفظ البيانات والـ IP في شيت جوجل بسرية
                             append_to_google_sheet_silent(
                                 name, "Applicant", email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
                             )
 
-                            # حفظ نتائج التحليل في st.session_state لتبقى ظاهرة حتى مع الـ Refresh
                             st.session_state.last_analysis = {
                                 'pdf_images': pdf_images,
                                 'score': score,
