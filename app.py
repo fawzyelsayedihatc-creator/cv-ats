@@ -3,13 +3,15 @@ import re
 import random
 import sqlite3
 import pdfplumber
-import base64
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import google.generativeai as genai
 import streamlit as st
+import pypdfium2 as pdfium
+from PIL import Image
 from io import BytesIO
+import extra_streamlit_components as stx
 
 # --- إعدادات الصفحة ---
 st.set_page_config(
@@ -19,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# الثيم والتنسيقات الأخضر السعودي + توسيط فورمة الدخول
+# الثيم والتنسيقات الأخضر السعودي
 st.markdown("""
 <style>
     .stApp { background-color: #F8FAFC; color: #0F172A; }
@@ -37,17 +39,11 @@ st.markdown("""
         display: block; background-color: #25D366; color: white !important;
         text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; text-decoration: none;
     }
-    
-    /* تنسيق كارت الدخول في المنتصف */
-    .login-box {
-        background-color: #FFFFFF;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        border: 1px solid #E2E8F0;
-    }
 </style>
 """, unsafe_allow_html=True)
+
+# --- الكوكيز لتثبيت الجلسة عند عمل Refresh ---
+cookie_manager = stx.CookieManager()
 
 # --- الثوابت ---
 GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
@@ -71,11 +67,8 @@ def init_db():
             role TEXT DEFAULT 'user'
         )
     """)
-    
-    # حذف وإعادة إضافة حساب الأدمن لضمان التوافق التام
     cursor.execute("DELETE FROM users WHERE email = 'fawzi ali'")
     cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES ('fawzi ali', '112003112003', 99999, 1, 'admin')")
-    
     conn.commit()
     conn.close()
 
@@ -127,7 +120,16 @@ def get_all_users():
     conn.close()
     return users
 
-# --- التقييم والتحليل ---
+# --- تحويل PDF إلى صورة للمعاينة المضمونة ---
+def render_pdf_to_image(file_bytes):
+    try:
+        pdf = pdfium.PdfDocument(file_bytes)
+        page = pdf[0]
+        image = page.render(scale=2).to_pil()
+        return image
+    except Exception:
+        return None
+
 JOB_TITLES = [
     "software engineer", "data analyst", "project manager", "graphic designer", 
     "digital marketer", "accountant", "human resources", "sales manager", 
@@ -137,7 +139,6 @@ JOB_TITLES = [
 
 def parse_cv_details(text):
     lines = [line.strip() for line in text.split('\n') if line.strip()]
-    
     email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
     email = email_match.group(0) if email_match else "غير مذكور"
 
@@ -149,7 +150,6 @@ def parse_cv_details(text):
             phone = extracted_phone
 
     name = lines[0] if lines else "غير محدد"
-
     job_title = "غير محدد"
     for title in JOB_TITLES:
         if title in text.lower():
@@ -196,7 +196,6 @@ def analyze_cv_with_ai(cv_text):
 def render_score_charts(score, cat_scores):
     plt.style.use('default')
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.5, 3.1), facecolor='#FFFFFF')
-    
     ax1.set_facecolor('#FFFFFF')
     primary_color = '#059669' if score >= 70 else '#D97706' if score >= 50 else '#DC2626'
     status_text = "ممتاز" if score >= 70 else "متوسط" if score >= 50 else "ضعيف"
@@ -230,13 +229,21 @@ def render_score_charts(score, cat_scores):
     plt.tight_layout()
     return fig
 
-# --- إيجاد جلسة التسجيل ---
+# --- إيجاد وثبات حالة الجلسة بفضل الكوكيز ---
+saved_user = cookie_manager.get('user_email')
+saved_role = cookie_manager.get('user_role')
+
+if saved_user and not st.session_state.get('logged_in'):
+    st.session_state.logged_in = True
+    st.session_state.user_email = saved_user
+    st.session_state.role = saved_role
+
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_email = ""
     st.session_state.role = "user"
 
-# --- شاشة تسجيل الدخول وأن تكون متمركزة وأنيقة ---
+# --- شاشة تسجيل الدخول ---
 if not st.session_state.logged_in:
     col_left, col_center, col_right = st.columns([1, 1.8, 1])
     
@@ -251,7 +258,7 @@ if not st.session_state.logged_in:
             login_email = st.text_input("اسم المستخدم / البريد الإلكتروني:", key="l_email")
             login_pass = st.text_input("كلمة المرور:", type="password", key="l_pass")
             
-            if st.button("دخول الأن"):
+            if st.button("دخول الآن"):
                 success, user_data = login_user(login_email, login_pass)
                 if success:
                     email, password, coins, is_approved, role = user_data
@@ -261,6 +268,8 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.user_email = email
                         st.session_state.role = role
+                        cookie_manager.set('user_email', email)
+                        cookie_manager.set('user_role', role)
                         st.rerun()
                 else:
                     st.error("إسم المستخدم أو كلمة المرور غير صحيحة!")
@@ -288,6 +297,8 @@ else:
         with st.sidebar:
             st.success("مرحباً بك يا دكتور! (ADMIN)")
             if st.button("🚪 تسجيل الخروج"):
+                cookie_manager.delete('user_email')
+                cookie_manager.delete('user_role')
                 st.session_state.logged_in = False
                 st.rerun()
 
@@ -351,6 +362,8 @@ else:
                 st.metric(label="📄 الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV} فحص")
                 
                 if st.button("🚪 تسجيل الخروج"):
+                    cookie_manager.delete('user_email')
+                    cookie_manager.delete('user_role')
                     st.session_state.logged_in = False
                     st.rerun()
 
@@ -376,6 +389,7 @@ else:
                     st.error("⚠️ رصيدك غير كافٍ لإجراء الفحص! يرجى التواصل لشحن الرصيد.")
                 else:
                     with st.spinner("🔍 جاري قراءة وتحليل الملف..."):
+                        file_bytes = uploaded_file.getvalue()
                         extracted_text = ""
                         try:
                             with pdfplumber.open(uploaded_file) as pdf:
@@ -406,14 +420,15 @@ else:
                             st.success("✅ تم التقييم والتحليل بنجاح!")
                             st.divider()
 
-                            # محاذاة العرض
                             pdf_col, report_col = st.columns([1.1, 1])
 
                             with pdf_col:
-                                st.subheader("📄 السيرة الذاتية المرفوعة")
-                                base64_pdf = base64.b64encode(uploaded_file.getvalue()).decode('utf-8')
-                                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" width="100%" height="750" style="border:1px solid #CBD5E1; border-radius:8px;"></iframe>'
-                                st.markdown(pdf_display, unsafe_allow_html=True)
+                                st.subheader("📄 معاينة السيرة الذاتية")
+                                cv_image = render_pdf_to_image(file_bytes)
+                                if cv_image:
+                                    st.image(cv_image, caption="الصفحة الأولى من الـ CV", use_container_width=True)
+                                else:
+                                    st.info("لم نتمكن من عرض المعاينة البصرية للملف، لكن تم تحليله بنجاح.")
 
                             with report_col:
                                 fig = render_score_charts(score, cat_scores)
@@ -422,7 +437,7 @@ else:
                                 st.markdown(ai_analysis)
 
                             st.divider()
-                            st.subheader("📊 البيانات المستخرجة وتصدير الملف")
+                            st.subheader("📊 البيانات المستخرجة")
                             df_data = pd.DataFrame([{
                                 "الاسم": name,
                                 "التخصص": job_title,
