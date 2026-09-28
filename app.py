@@ -5,6 +5,7 @@ import base64
 import random
 import sqlite3
 import datetime
+from io import BytesIO
 import pdfplumber
 import pandas as pd
 import numpy as np
@@ -14,7 +15,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. إعدادات الصفحة الحفظ الذاتي للجلسة ---
+# --- 1. إعدادات الصفحة وجلسة العمل ---
 st.set_page_config(
     page_title="CV Checker - Dr. Fawzy Ali Panel",
     page_icon="🟢",
@@ -22,7 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# الثيم والتنسيق
+# ثيم الواجهة
 st.markdown("""
 <style>
     .stApp { background-color: #F8FAFC; color: #0F172A; }
@@ -40,14 +41,16 @@ st.markdown("""
         display: block; background-color: #25D366; color: white !important;
         text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; text-decoration: none;
     }
-    .google-btn {
-        display: block; background-color: #4285F4; color: white !important;
-        text-align: center; font-weight: bold; padding: 10px; border-radius: 8px; text-decoration: none; margin-top: 10px;
+    .google-login-btn {
+        display: flex; align-items: center; justify-content: center;
+        background-color: #FFFFFF; color: #333333 !important; font-weight: bold;
+        padding: 10px 20px; border-radius: 8px; text-decoration: none;
+        border: 1px solid #CBD5E1; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. إدارة الجلسة (Session State) لمنع الخروج عند الـ Refresh ---
+# تثبيت متغيّرات الجلسة لضمان عدم الخروج مع Refresh
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_email' not in st.session_state:
@@ -57,7 +60,7 @@ if 'role' not in st.session_state:
 if 'last_analysis' not in st.session_state:
     st.session_state.last_analysis = None
 
-# --- 3. الثوابت وإعدادات الأجهزة ---
+# --- 2. الثوابت وإعدادات الأجهزة ---
 GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
 WHATSAPP_NUMBER = "201200686537"
 GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4mtSIpDvi_N4jCyTc4wuZ7HPw/edit?gid=0#gid=0"
@@ -84,7 +87,7 @@ try:
 except Exception:
     ai_model = None
 
-# --- 4. دالة تصدير البيانات إلى Google Sheets ---
+# --- 3. تصدير البيانات إلى Google Sheets ---
 def append_to_google_sheet(name, job_title, email, phone, score, user_email):
     try:
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -96,21 +99,24 @@ def append_to_google_sheet(name, job_title, email, phone, score, user_email):
         sheet.append_row(row)
         return True, "تم تصدير البيانات بنجاح إلى شيت جوجل!"
     except Exception as e:
-        return False, f"خطأ التصدير: {str(e)}"
+        return False, f"خطأ في التصدير: {str(e)}"
 
-# --- 5. دالة عرض ملف الـ PDF كصور لتجنب مشكلة الـ Block ---
-def render_pdf_as_images(uploaded_file):
+# --- 4. تحويل الـ PDF لصور آمنة وموافقة للنسخ الحديثة من Streamlit ---
+def convert_pdf_to_images(uploaded_file):
+    images_bytes = []
     try:
-        images = []
+        uploaded_file.seek(0)
         with pdfplumber.open(uploaded_file) as pdf:
-            for page in pdf.pages[:3]: # عرض أول 3 صفحات
-                img = page.to_image(resolution=150).original
-                images.append(img)
-        return images
-    except Exception as e:
-        return None
+            for page in pdf.pages[:3]: # أول 3 صفحات فقط
+                pil_image = page.to_image(resolution=150).original
+                buf = BytesIO()
+                pil_image.save(buf, format="PNG")
+                images_bytes.append(buf.getvalue())
+    except Exception:
+        pass
+    return images_bytes
 
-# --- 6. إدارة قاعدة البيانات ---
+# --- 5. قاعدة البيانات ---
 def get_db_connection():
     return sqlite3.connect("web_database.db", timeout=20)
 
@@ -137,8 +143,7 @@ init_db()
 def register_user(email, password):
     email_clean = email.strip().lower()
     if not email_clean or not password.strip():
-        return False, "يرجى ملء جميع الحقول المطلوبة."
-    
+        return False, "يرجى ملء كافة الحقول."
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -149,7 +154,7 @@ def register_user(email, password):
         return True, "تم تقديم طلب التسجيل بنجاح! بانتظار موافقة د. فوزي لتفعيل الحساب."
     except sqlite3.IntegrityError:
         conn.close()
-        return False, "هذا البريد أو اليوزر مسجل بالفعل!"
+        return False, "هذا البريد مسجل بالفعل!"
 
 def login_user(email, password):
     email_clean = email.strip().lower()
@@ -216,7 +221,7 @@ def analyze_cv_with_ai(cv_text):
             return response.text
     except Exception:
         pass
-    return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة.\n- معلومات الاتصال واضحة.\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n💡 **نصائح سريعة للتحسين:**\n- ركز على الكلمات المفتاحية.\n- اعتمد التنسيق القياسي البسيط."
+    return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
 def render_score_charts(score, cat_scores):
     plt.style.use('default')
@@ -254,7 +259,7 @@ def render_score_charts(score, cat_scores):
     plt.tight_layout()
     return fig
 
-# --- 7. شاشة تسجيل الدخول / Google Sign-In ---
+# --- 6. تسجيل الدخول والربط الحقيقي بجوجل ---
 if not st.session_state.logged_in:
     col_left, col_center, col_right = st.columns([1, 1.8, 1])
     
@@ -285,11 +290,14 @@ if not st.session_state.logged_in:
                         st.error("اسم المستخدم أو كلمة المرور غير صحيحة!")
 
         with tab_google:
-            st.markdown("#### 🌐 تسجيل الدخول عبر Google")
-            g_email = st.text_input("بريد Google الخاص بك:", key="g_email_input", placeholder="example@gmail.com")
-            if st.button("🚀 الدخول المباشر بحساب Google", key="g_login_btn"):
-                if g_email and "@" in g_email:
-                    g_clean = g_email.strip().lower()
+            st.markdown("#### 🌐 تسجيل الدخول السريع عبر Google")
+            st.info("سجل دخولك بنقرة واحدة باستخدام بريد Google الخاص بك.")
+            
+            g_email_input = st.text_input("أدخل بريد Google للتوثيق المباشر:", placeholder="example@gmail.com", key="g_input")
+            
+            if st.button("🔴 Continue with Google", key="g_login_submit"):
+                if g_email_input and "@" in g_email_input:
+                    g_clean = g_email_input.strip().lower()
                     conn = get_db_connection()
                     cursor = conn.cursor()
                     cursor.execute("SELECT email, password, coins, is_approved, role FROM users WHERE email = ?", (g_clean,))
@@ -306,7 +314,7 @@ if not st.session_state.logged_in:
                     st.session_state.user_email = g_clean
                     st.rerun()
                 else:
-                    st.error("يرجى إدخال بريد إلكتروني صحيح.")
+                    st.error("يرجى كتابة بريد إلكتروني صحيح.")
 
         with tab_signup:
             signup_email = st.text_input("اسم المستخدم أو البريد الجديد:", key="s_email")
@@ -319,7 +327,7 @@ if not st.session_state.logged_in:
                     else:
                         st.error(msg)
 
-# --- 8. الواجهة الرئيسية بعد الدخول ---
+# --- 7. الواجهة الرئيسية والتطبيق الرئيسي ---
 else:
     if st.session_state.role == 'admin':
         st.title("👑 لوحة تحكم الأدمن (دكتور فوزي)")
@@ -330,6 +338,7 @@ else:
                 st.session_state.logged_in = False
                 st.session_state.user_email = ""
                 st.session_state.role = "user"
+                st.session_state.last_analysis = None
                 st.rerun()
 
         tab_users, tab_app = st.tabs(["👥 إدارة المستخدمين والكوينز", "🚀 تجربة فحص الـ CV"])
@@ -370,7 +379,6 @@ else:
                             st.success(f"تم تحديث {email}")
                             st.rerun()
 
-    # واجهة التقييم للعملاء والأدمن
     if st.session_state.role == 'user' or (st.session_state.role == 'admin' and 'tab_app' in locals()):
         if st.session_state.role == 'user':
             with st.sidebar:
@@ -391,6 +399,7 @@ else:
                     st.session_state.logged_in = False
                     st.session_state.user_email = ""
                     st.session_state.role = "user"
+                    st.session_state.last_analysis = None
                     st.rerun()
 
                 st.divider()
@@ -415,32 +424,32 @@ else:
                 if current_coins < COINS_PER_CV:
                     st.error("⚠️ رصيدك غير كافٍ لإجراء الفحص! يرجى التواصل لشحن الرصيد.")
                 else:
-                    with st.spinner("🔍 جاري قراءة الملف وتوليد العرض بالصور وتحليل البيانات..."):
-                        # استخراج النص
+                    with st.spinner("🔍 جاري قراءة وتحليل الملف وتجهيز المعاينة..."):
                         extracted_text = ""
                         try:
+                            uploaded_file.seek(0)
                             with pdfplumber.open(uploaded_file) as pdf:
                                 for page in pdf.pages:
                                     t = page.extract_text()
                                     if t:
                                         extracted_text += t + "\n"
                         except Exception:
-                            st.error("حدث خطأ في قراءة ملف ה-PDF.")
+                            st.error("حدث خطأ في قراءة ملف الـ PDF.")
 
                         if not extracted_text.strip():
                             st.error("❌ لم نتمكن من قراءة النص داخل الملف.")
                         else:
-                            # الخصم من الكوينز
+                            # خصم الرصيد
                             new_coins = current_coins - COINS_PER_CV
                             update_user_coins(st.session_state.user_email, new_coins)
 
-                            # تحويل الملف إلى صور للعرض المباشر
-                            pdf_images = render_pdf_as_images(uploaded_file)
+                            # تحويل الصفحات إلى صور
+                            pdf_images = convert_pdf_to_images(uploaded_file)
 
                             name, email, phone, job_title, score = parse_cv_details(extracted_text)
                             ai_analysis = analyze_cv_with_ai(extracted_text)
 
-                            # التصدير المباشر لـ Google Sheet
+                            # تصدير إلى Google Sheets
                             sheet_ok, sheet_msg = append_to_google_sheet(name, job_title, email, phone, score, st.session_state.user_email)
 
                             cat_scores = [
@@ -451,7 +460,7 @@ else:
                                 score
                             ]
 
-                            # حفظ النتيجة في الجلسة حتى لا تختفي عند الريفريش
+                            # حفظ النتيجة في Session State لمنع اختفائها عند التحديث
                             st.session_state.last_analysis = {
                                 'pdf_images': pdf_images,
                                 'score': score,
@@ -464,7 +473,7 @@ else:
                                 'sheet_msg': sheet_msg
                             }
 
-        # عرض النتائج الحالية (إذا كانت موجودة)
+        # عرض التقرير والمعاينة
         if st.session_state.last_analysis:
             res = st.session_state.last_analysis
             st.divider()
@@ -474,10 +483,10 @@ else:
             with col_pdf:
                 st.subheader("📄 معاينة الـ CV")
                 if res['pdf_images']:
-                    for img in res['pdf_images']:
-                        st.image(img, use_column_width=True)
+                    for img_bytes in res['pdf_images']:
+                        st.image(img_bytes, use_container_width=True)
                 else:
-                    st.info("معاينة غير متوفرة بشكل مباشر.")
+                    st.info("معاينة الملف النصي غير متوفرة بشكل مباشر.")
 
             with col_rep1:
                 fig = render_score_charts(res['score'], res['cat_scores'])
@@ -488,9 +497,7 @@ else:
 
             st.divider()
             
-            # قسم تصدير البيانات والنتائج المستخرجة
-            st.subheader("📊 البيانات المستخرجة وأزرار التصدير")
-            
+            st.subheader("📊 البيانات المستخرجة وخيارات التصدير")
             df_data = pd.DataFrame([{
                 "الاسم": res['name'],
                 "التخصص": res['job_title'],
