@@ -526,7 +526,7 @@ else:
                 data=excel_data,
                 file_name=f"CV_Analysis_{res['name']}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )import os
+            import os
 import re
 import json
 import sqlite3
