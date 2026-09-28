@@ -521,7 +521,7 @@ else:
                 df_data.to_excel(writer, index=False, sheet_name='CV Analysis')
             excel_data = output.getvalue()
             
-            st.download_button(
+            st.download_button
                 label="📥 تنزيل شيت إكسيل الخاص بك (Excel)",
                 data=excel_data,
                 file_name=f"CV_Analysis_{res['name']}.xlsx",
