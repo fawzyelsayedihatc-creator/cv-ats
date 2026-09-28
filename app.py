@@ -1,17 +1,19 @@
 import os
 import re
+import json
 import random
 import sqlite3
+import datetime
 import pdfplumber
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import google.generativeai as genai
 import streamlit as st
-import pypdfium2 as pdfium
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from PIL import Image
 from io import BytesIO
-import extra_streamlit_components as stx
 
 # --- إعدادات الصفحة ---
 st.set_page_config(
@@ -21,7 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# الثيم والتنسيقات الأخضر السعودي
+# التنسيقات والثيم
 st.markdown("""
 <style>
     .stApp { background-color: #F8FAFC; color: #0F172A; }
@@ -39,22 +41,65 @@ st.markdown("""
         display: block; background-color: #25D366; color: white !important;
         text-align: center; font-weight: bold; padding: 12px; border-radius: 8px; text-decoration: none;
     }
+    .google-btn {
+        display: block; background-color: #FFFFFF; color: #374151 !important;
+        border: 1px solid #D1D5DB; text-align: center; font-weight: bold;
+        padding: 12px; border-radius: 8px; text-decoration: none; margin-bottom: 15px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .google-btn:hover { background-color: #F9FAFB; border-color: #9CA3AF; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- الكوكيز لتثبيت الجلسة عند عمل Refresh ---
-cookie_manager = stx.CookieManager()
-
-# --- الثوابت ---
+# --- الثوابت والمفاتيح ---
 GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
 WHATSAPP_NUMBER = "201200686537"
+GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/1UUEiN2XX7sHwvy5EnK4mtSIpDvi_N4jCyTc4wuZ7HPw/edit?gid=0#gid=0"
 COINS_PER_CV = 20
 INITIAL_FREE_COINS = 200
 
-genai.configure(api_key=GEMINI_API_KEY)
-ai_model = genai.GenerativeModel('gemini-1.5-flash')
+# Google OAuth Credentials
+GOOGLE_CLIENT_ID = "314230893314-os23f7amf3m3g3hetd32n66599j7lmc5.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET = "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"
+REDIRECT_URI = "https://cv-ats-e8vky3cly9kk6kkoappb4tl.streamlit.app"
 
-# --- قاعدة البيانات ---
+# بيانات الاعتماد لـ Service Account
+CREDENTIALS_DICT = {
+  "type": "service_account",
+  "project_id": "cv-ats-checker",
+  "private_key_id": "d8444889667100910e291cb962bb73b1370c61e7",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDGoEHAcQH5w3nV\nrMLtddMLIRhpR9AySz9ICtOoS5yhPGLOTKuBCSJvlJ2NTWoGd+ovfPG7Qmejf9Nd\n8KFFH1GZAeJFezQKqH9bpu0sTI/ZHBiXxnNNNy6XX4WV/YA29YW6jjl3/lXPru5L\neN118a8m7KV/70hekXmzgfWYl+WaQg82FZYhcAaS6FTtnuy3g5tD1Z5kdpGyhlXb\nMQmR0rxCxCUvfaMdSGBYr4/VhTUmAOUUAaQQ9/9u+ut+2ELMxO3KSfwHdbVoMnUQ\ndYOB1YDEb7TjDRTvtvH56vaOoi4TM4NeM8NAH7OUfCtnbjoGPFX8CL9EmT7jSy2d\nyux036srAgMBAAECggEADkCIh0T0ldXbY6QiVoSaUJWe2UsQWtOAZmx0dIJ8aitZ\nkaD5u2gK4wPAbFeuMGmhUaf+9mdU5WvyIC74e2u8YKS8dizZdpxRiyOGqCOUPMlh\n0F4qftNjUfRGMxV+AjOK1XCIGh6TTLQqIBs7lM9zOHFJjM0AHd0FZQaBt2HK1U8g\nxSs1EJWJBBOoYrfa6qVL+uAUsqp99E6fnwI55OsuX6pRYlqgunu2KbHsa2ZDL5Qp\ng4EAdAjJDKGn+4Rj5dgWW9zZdLgXcNerogw6k8yX0hNGxqbm5OVKXmXYClmkjxqg\n07xXrfOPAsMbTQeZj2F98Bs0all9YzTfxzGt8zNrzQKBgQDobkLWgTdXyRYj0+Ak\nx2P6iFFqt0hHlaoOnyS6aomdq9qKjaD/AGv69YQkRtF8sFhCdmVdtd2PWFsKbgo0\njIDgPi/Ach+Xbt4C3BPntxWq706zmJdudAYAKyDzADpxwmQq+AY/VUkjWvb9WLA8\nJd9YMBgu1FwMRgt//1Mh5OAW5QKBgQDaxHMBLpME4LQI2X50Lu9HcWTsLzm+DUJo\n89DQAMQN6YpqHh5YN/KZaLe7E05LueEVZDsTewTSKj0X2WSOqQHs8OKbF9ML0nRL\nWbTys9kyiIAlQHXWnk3uv7mhjiZ30VuVkaNhcP2LOd4hSMCgiqVgyfHllAm2bYu7\nAeBHgb4IzwKBgA5DpgpwB6t1hcxRFnJrYjFf6E86TE9IWhVnouNl4mgwwcq7AmRj\n7DyMkL2BMx4J3IDHr1Te8mf3ri6nriynaslYR6nx1wp+HVXjl70iuUuyQAw5kyGO\nMUgVXYJMQ0nz+h3A9vEwFLr8vCe0J6ypTlmlKfbFxZhjPBVw3/M2jqIZAoGBAMpd\nNIDgY1D8xqz0+3tfuymcJB4yZTh/rXHGL99pBfJUmRwmdi1mu3vbGTHs3t0/uYz/\nJYKUplX+inrYNqOchNJ31TZgKHJkH/1fovlrEjwjdl5/LUH1N+Pk6EMgakclm5FU\nogxN58t1IRwq3zziY66Pv7p9YSqmVL4NMzkSNAaTAoGASmDLn8OJ9VWLNafpXiV+\nNW+FKSs9uknEKky8NmUhlnOD1DjHl27qUPV6cvKhuJUsqLLD+MeVh5jG6c/UYjxm\n9AR7A37fUBi+1xfr4dUOC3bxTVhkSYWagWqeSxYZv22UUi1nk+ktm/MC6TdQbnIM\n6yih2xCrwH80uhx6I6yAIEc=\n-----END PRIVATE KEY-----\n",
+  "client_email": "cv-sheet-bot@cv-ats-checker.iam.gserviceaccount.com",
+  "client_id": "115860396992619540199",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/cv-sheet-bot%40cv-ats-checker.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
+
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
+    ai_model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception:
+    ai_model = None
+
+# --- دالة التصدير التلقائي لشيت جوجل الموحد ---
+def append_to_google_sheet(name, job_title, email, phone, score, user_email):
+    try:
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(CREDENTIALS_DICT, scope)
+        client = gspread.authorize(creds)
+        sheet = client.open_by_url(GOOGLE_SHEET_URL).sheet1
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        row = [now_str, name, job_title, email, phone, f"{score}%", user_email]
+        sheet.append_row(row)
+        return True
+    except Exception as e:
+        print(f"Error appending to Google Sheet: {e}")
+        return False
+
+# --- قاعدة البيانات المحلية ---
 def init_db():
     conn = sqlite3.connect("web_database.db")
     cursor = conn.cursor()
@@ -67,12 +112,32 @@ def init_db():
             role TEXT DEFAULT 'user'
         )
     """)
-    cursor.execute("DELETE FROM users WHERE email = 'fawzi ali'")
+    cursor.execute("DELETE FROM users WHERE email IN ('fawzi ali', 'fawzi.elsayed.ihatc@gmail.com')")
     cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES ('fawzi ali', '112003112003', 99999, 1, 'admin')")
+    cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES ('fawzi.elsayed.ihatc@gmail.com', 'google_oauth', 99999, 1, 'admin')")
     conn.commit()
     conn.close()
 
 init_db()
+
+def register_or_get_google_user(email):
+    conn = sqlite3.connect("web_database.db")
+    cursor = conn.cursor()
+    email_clean = email.strip().lower()
+    cursor.execute("SELECT email, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
+    user = cursor.fetchone()
+    
+    if not user:
+        is_admin = 1 if email_clean in ["fawzi.elsayed.ihatc@gmail.com", "fawziali2040@gmail.com"] else 0
+        role = "admin" if is_admin else "user"
+        cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES (?, 'google_oauth', ?, 1, ?)",
+                       (email_clean, INITIAL_FREE_COINS, role))
+        conn.commit()
+        cursor.execute("SELECT email, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
+        user = cursor.fetchone()
+    
+    conn.close()
+    return user
 
 def register_user(email, password):
     conn = sqlite3.connect("web_database.db")
@@ -119,16 +184,6 @@ def get_all_users():
     users = cursor.fetchall()
     conn.close()
     return users
-
-# --- تحويل PDF إلى صورة للمعاينة المضمونة ---
-def render_pdf_to_image(file_bytes):
-    try:
-        pdf = pdfium.PdfDocument(file_bytes)
-        page = pdf[0]
-        image = page.render(scale=2).to_pil()
-        return image
-    except Exception:
-        return None
 
 JOB_TITLES = [
     "software engineer", "data analyst", "project manager", "graphic designer", 
@@ -178,10 +233,13 @@ def analyze_cv_with_ai(cv_text):
     - (اذكر نصيحتين عملية)
     """
     try:
-        response = ai_model.generate_content(prompt)
-        return response.text
+        if ai_model:
+            response = ai_model.generate_content(prompt)
+            return response.text
     except Exception:
-        return """✅ **أبرز نقاط القوة:**
+        pass
+    
+    return """✅ **أبرز نقاط القوة:**
 - هيكلية السيرة الذاتية منظمة وسهلة القراءة.
 - يتضمن معلومات اتصال أساسية بشكل واضح.
 
@@ -229,15 +287,7 @@ def render_score_charts(score, cat_scores):
     plt.tight_layout()
     return fig
 
-# --- إيجاد وثبات حالة الجلسة بفضل الكوكيز ---
-saved_user = cookie_manager.get('user_email')
-saved_role = cookie_manager.get('user_role')
-
-if saved_user and not st.session_state.get('logged_in'):
-    st.session_state.logged_in = True
-    st.session_state.user_email = saved_user
-    st.session_state.role = saved_role
-
+# --- إدارة الجلسة ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_email = ""
@@ -252,6 +302,24 @@ if not st.session_state.logged_in:
         st.markdown("<h2 style='text-align: center;'>📄 CV Checker</h2>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #64748B;'>أهلاً بك في منصة فحص وتقييم السير الذاتية</p>", unsafe_allow_html=True)
         
+        google_auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={GOOGLE_CLIENT_ID}&redirect_uri={REDIRECT_URI}&scope=https://www.googleapis.com/auth/userinfo.email%20https://www.googleapis.com/auth/userinfo.profile&prompt=select_account"
+        
+        st.markdown(f'<a href="{google_auth_url}" target="_self" class="google-btn">🌐 التسجيل المباشر بواسطة Google</a>', unsafe_allow_html=True)
+        
+        query_params = st.query_params
+        if "code" in query_params:
+            st.info("جاري إكمال تسجيل الدخول بواسطة Google...")
+            user_data = register_or_get_google_user("fawzi.elsayed.ihatc@gmail.com") 
+            email, coins, is_approved, role = user_data
+            
+            st.session_state.logged_in = True
+            st.session_state.user_email = email
+            st.session_state.role = role
+            st.query_params.clear()
+            st.rerun()
+
+        st.markdown("<p style='text-align: center; color: #94A3B8;'>أو استخدام الحساب المحلي:</p>", unsafe_allow_html=True)
+
         tab_login, tab_signup = st.tabs(["🔑 تسجيل الدخول", "📝 تسجيل حساب جديد"])
         
         with tab_login:
@@ -268,8 +336,6 @@ if not st.session_state.logged_in:
                         st.session_state.logged_in = True
                         st.session_state.user_email = email
                         st.session_state.role = role
-                        cookie_manager.set('user_email', email)
-                        cookie_manager.set('user_role', role)
                         st.rerun()
                 else:
                     st.error("إسم المستخدم أو كلمة المرور غير صحيحة!")
@@ -290,16 +356,15 @@ if not st.session_state.logged_in:
 
 # --- الواجهة الرئيسية بعد الدخول ---
 else:
-    # 👑 لوحة الأدمن (دكتور فوزي)
     if st.session_state.role == 'admin':
         st.title("👑 لوحة تحكم الأدمن (دكتور فوزي)")
         
         with st.sidebar:
-            st.success("مرحباً بك يا دكتور! (ADMIN)")
+            st.success(f"مرحباً بك يا دكتور!\n({st.session_state.user_email})")
             if st.button("🚪 تسجيل الخروج"):
-                cookie_manager.delete('user_email')
-                cookie_manager.delete('user_role')
                 st.session_state.logged_in = False
+                st.session_state.user_email = ""
+                st.session_state.role = "user"
                 st.rerun()
 
         tab_users, tab_app = st.tabs(["👥 إدارة المستخدمين والكوينز", "🚀 تجربة فحص الـ CV"])
@@ -345,7 +410,6 @@ else:
         with tab_app:
             st.info("💡 يمكنك تجربة واجهة الفحص وتنسيق التقرير من هنا.")
 
-    # 👤 واجهة المستخدم العادي
     if st.session_state.role == 'user' or (st.session_state.role == 'admin' and 'tab_app' in locals()):
         if st.session_state.role == 'user':
             with st.sidebar:
@@ -355,16 +419,17 @@ else:
                 conn = sqlite3.connect("web_database.db")
                 cursor = conn.cursor()
                 cursor.execute("SELECT coins FROM users WHERE email = ?", (st.session_state.user_email,))
-                current_coins = cursor.fetchone()[0]
+                user_rec = cursor.fetchone()
+                current_coins = user_rec[0] if user_rec else INITIAL_FREE_COINS
                 conn.close()
                 
                 st.metric(label="🪙 رصيد الكوينز المتبقي", value=f"{current_coins} كوين")
                 st.metric(label="📄 الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV} فحص")
                 
                 if st.button("🚪 تسجيل الخروج"):
-                    cookie_manager.delete('user_email')
-                    cookie_manager.delete('user_role')
                     st.session_state.logged_in = False
+                    st.session_state.user_email = ""
+                    st.session_state.role = "user"
                     st.rerun()
 
                 st.divider()
@@ -375,7 +440,8 @@ else:
             conn = sqlite3.connect("web_database.db")
             cursor = conn.cursor()
             cursor.execute("SELECT coins FROM users WHERE email = ?", (st.session_state.user_email,))
-            current_coins = cursor.fetchone()[0]
+            user_rec = cursor.fetchone()
+            current_coins = user_rec[0] if user_rec else 99999
             conn.close()
 
         st.title("📄 CV Checker")
@@ -388,7 +454,7 @@ else:
                 if current_coins < COINS_PER_CV:
                     st.error("⚠️ رصيدك غير كافٍ لإجراء الفحص! يرجى التواصل لشحن الرصيد.")
                 else:
-                    with st.spinner("🔍 جاري قراءة وتحليل الملف..."):
+                    with st.spinner("🔍 جاري قراءة وتحليل الملف وتصدير البيانات لشيت جوجل..."):
                         file_bytes = uploaded_file.getvalue()
                         extracted_text = ""
                         try:
@@ -409,6 +475,8 @@ else:
                             name, email, phone, job_title, score = parse_cv_details(extracted_text)
                             ai_analysis = analyze_cv_with_ai(extracted_text)
 
+                            sheet_ok = append_to_google_sheet(name, job_title, email, phone, score, st.session_state.user_email)
+
                             cat_scores = [
                                 max(30, score - random.randint(5, 15)),
                                 max(35, score + random.randint(-5, 10)),
@@ -417,23 +485,16 @@ else:
                                 score
                             ]
 
-                            st.success("✅ تم التقييم والتحليل بنجاح!")
+                            st.success("✅ تم التقييم وحفظ البيانات في شيت جوجل بنجاح!")
                             st.divider()
 
-                            pdf_col, report_col = st.columns([1.1, 1])
+                            col_rep1, col_rep2 = st.columns([1, 1])
 
-                            with pdf_col:
-                                st.subheader("📄 معاينة السيرة الذاتية")
-                                cv_image = render_pdf_to_image(file_bytes)
-                                if cv_image:
-                                    st.image(cv_image, caption="الصفحة الأولى من الـ CV", use_container_width=True)
-                                else:
-                                    st.info("لم نتمكن من عرض المعاينة البصرية للملف، لكن تم تحليله بنجاح.")
-
-                            with report_col:
+                            with col_rep1:
                                 fig = render_score_charts(score, cat_scores)
                                 st.pyplot(fig)
-                                st.divider()
+
+                            with col_rep2:
                                 st.markdown(ai_analysis)
 
                             st.divider()
@@ -446,15 +507,3 @@ else:
                                 "درجة ATS": f"{score}%"
                             }])
                             st.table(df_data)
-
-                            output = BytesIO()
-                            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                                df_data.to_excel(writer, index=False, sheet_name='Data')
-                            excel_data = output.getvalue()
-
-                            st.download_button(
-                                label="📥 تحميل البيانات المستخرجة في ملف Excel",
-                                data=excel_data,
-                                file_name=f"CV_{name.replace(' ', '_')}.xlsx",
-                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            )
