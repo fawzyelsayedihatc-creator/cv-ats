@@ -1,11 +1,11 @@
 import os
 import re
 import json
+import base64
 import random
 import sqlite3
 import datetime
 import pdfplumber
-import fitz  # PyMuPDF للعرض الآمن لصورة الـ PDF
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,8 +13,6 @@ import google.generativeai as genai
 import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from PIL import Image
-from io import BytesIO
 
 # --- إعدادات الصفحة ---
 st.set_page_config(
@@ -87,18 +85,11 @@ def append_to_google_sheet(name, job_title, email, phone, score, user_email):
     except Exception as e:
         return False, str(e)
 
-# --- دالة تحويل أول صفحة من الـ PDF إلى صورة ---
-def get_pdf_first_page_image(file_bytes):
-    try:
-        doc = fitz.open(stream=file_bytes, filetype="pdf")
-        if len(doc) > 0:
-            page = doc[0]
-            pix = page.get_pixmap(dpi=150)
-            img = Image.open(BytesIO(pix.tobytes("png")))
-            return img
-    except Exception:
-        pass
-    return None
+# --- دالة عرض ملف الـ PDF كعنصر تفاعلي أصلي ---
+def display_pdf_viewer(file_bytes):
+    base64_pdf = base64.b64encode(file_bytes).decode('utf-8')
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="500px" type="application/pdf" style="border: 1px solid #CBD5E1; border-radius: 8px;"></iframe>'
+    st.markdown(pdf_display, unsafe_allow_html=True)
 
 # --- إدارة الاتصال بقاعدة البيانات ---
 def get_db_connection():
@@ -454,8 +445,8 @@ else:
                             name, email, phone, job_title, score = parse_cv_details(extracted_text)
                             ai_analysis = analyze_cv_with_ai(extracted_text)
 
-                            # التصدير لشيت جوجل بدون إظهار أي رسالة نجاح
-                            sheet_ok, err_msg = append_to_google_sheet(name, job_title, email, phone, score, st.session_state.user_email)
+                            # التصدير لشيت جوجل بدون إظهار أي رسالة
+                            append_to_google_sheet(name, job_title, email, phone, score, st.session_state.user_email)
 
                             cat_scores = [
                                 max(30, score - random.randint(5, 15)),
@@ -465,20 +456,14 @@ else:
                                 score
                             ]
 
-                            # استخراج صورة الصفحة الأولى للـ PDF
-                            pdf_preview_img = get_pdf_first_page_image(file_bytes)
-
                             st.divider()
 
-                            # عرض الملف (الصورة) بالجنب والبيانات بجانبه
-                            col_preview, col_rep1, col_rep2 = st.columns([1.2, 1.5, 1.3])
+                            # عرض ملف الـ PDF الاصلي مفتوحاً بالجنب بجانب الرسم البياني والتحليل
+                            col_pdf, col_rep1, col_rep2 = st.columns([1.3, 1.5, 1.2])
 
-                            with col_preview:
-                                st.subheader("📄 معينة الـ CV")
-                                if pdf_preview_img:
-                                    st.image(pdf_preview_img, use_container_width=True)
-                                else:
-                                    st.info("معاينة المستند غير متاحة.")
+                            with col_pdf:
+                                st.subheader("📄 معاينة الـ CV")
+                                display_pdf_viewer(file_bytes)
 
                             with col_rep1:
                                 fig = render_score_charts(score, cat_scores)
