@@ -587,3 +587,185 @@ if not st.session_state.logged_in:
                         st.success(msg)
                     else:
                         st.error(msg)
+
+# --- 8. التطبيق الرئيسي ولوحة التحكم (بعد تسجيل الدخول) ---
+else:
+    st.session_state.current_coins = fetch_user_coins(st.session_state.user_email)
+    
+    # القائمة الجانبية
+    with st.sidebar:
+        st.markdown(f"### 👤 مرحبا بك: {st.session_state.user_email}")
+        if st.session_state.role != 'admin':
+            st.metric(label="🪙 رصيد الكوينز الخاص بك", value=f"{st.session_state.current_coins} كوينز")
+        else:
+            st.info("👑 حساب مسؤول النظام (الأدمن)")
+            
+        st.markdown("---")
+        
+        if st.session_state.role == 'admin':
+            nav_choice = st.radio("القائمة:", ["🔍 فحص وحساب السيرة الذاتية", "👑 لوحة تحكم الأدمن"])
+        else:
+            nav_choice = "🔍 فحص وحساب السيرة الذاتية"
+            
+        st.markdown("---")
+        if st.button("🚪 تسجيل الخروج"):
+            st.session_state.logged_in = False
+            st.session_state.user_email = ""
+            st.session_state.role = "user"
+            st.query_params.clear()
+            st.rerun()
+
+    # --- لوحة الأدمن ---
+    if nav_choice == "👑 لوحة تحكم الأدمن" and st.session_state.role == 'admin':
+        st.title("👑 لوحة إدارية - د. فوزي علي")
+        st.markdown("إدارة الحسابات، طلبات التفعيل، وتخصيص الكوينز")
+        st.markdown("---")
+        
+        users = get_all_users()
+        if not users:
+            st.info("لا يوجد مستخدمون حالياً في النظام.")
+        else:
+            users_df = pd.DataFrame(users, columns=["البريد الإلكتروني", "الكوينز الحالي", "حالة التفعيل", "الرتبة"])
+            users_df["حالة التفعيل"] = users_df["حالة التفعيل"].apply(lambda x: "مفعل ✅" if x == 1 else "معطل / قيد الانتظار ⏳")
+            st.dataframe(users_df, use_container_width=True)
+            
+            st.markdown("### ⚙ التحكم بالحسابات")
+            selected_user = st.selectbox("اختر الحساب المراد إدارته:", [u[0] for u in users])
+            
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT coins, is_approved FROM users WHERE email = ?", (selected_user,))
+            u_info = cursor.fetchone()
+            conn.close()
+            
+            if u_info:
+                curr_c, is_app = u_info
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    st.write(f"**حالة التفعيل الحالية:** {'مفعل ✅' if is_app == 1 else 'غير مفعل ⏳'}")
+                    if is_app == 0:
+                        if st.button(f"✅ تفعيل حساب {selected_user}"):
+                            approve_user_db(selected_user)
+                            st.success(f"تم تفعيل الحساب {selected_user} بنجاح!")
+                            st.rerun()
+                    else:
+                        if st.button(f"🚫 إيقاف حساب {selected_user}"):
+                            suspend_user_db(selected_user)
+                            st.warning(f"تم إيقاف الحساب {selected_user}.")
+                            st.rerun()
+                            
+                with col_b:
+                    st.write(f"**الرصيد الحالي:** {curr_c} كوينز")
+                    new_c_val = st.number_input("الرصيد الجديد للكوينز:", value=curr_c, min_value=0, step=10)
+                    reason_val = st.text_input("سبب التعديل:", value="شحن رصيد بواسطة الأدمن")
+                    if st.button("تحديث رصيد الكوينز"):
+                        update_user_coins(selected_user, new_c_val, st.session_state.user_email, reason_val)
+                        st.success(f"تم تحديث رصيد {selected_user} إلى {new_c_val} كوينز!")
+                        st.rerun()
+                        
+            st.markdown("---")
+            st.markdown("### 📊 سجل نشاط ورسومات الحساب")
+            logs = get_user_logs(selected_user)
+            if logs:
+                df_l = pd.DataFrame(logs, columns=["نوع الإجراء", "تغير الكوينز", "التفاصيل", "الوقت"])
+                st.dataframe(df_l, use_container_width=True)
+                
+                c_chart1, c_chart2 = st.columns(2)
+                with c_chart1:
+                    fig_bar = render_account_bar_chart(df_l, selected_user)
+                    st.pyplot(fig_bar)
+                with c_chart2:
+                    fig_line = render_account_line_chart(df_l, selected_user)
+                    st.pyplot(fig_line)
+
+    # --- صفحة فحص الـ ATS الرئيسي ---
+    else:
+        st.title("📄 تحليل وفحص السيرة الذاتية (ATS)")
+        st.markdown(f"تكلفة الفحص لكل سيرة ذاتية: **{COINS_PER_CV} كوينز**")
+        
+        uploaded_files = st.file_uploader("قم برفع ملفات السيرة الذاتية (PDF):", type=["pdf"], accept_multiple_files=True)
+        
+        if uploaded_files:
+            if st.button("🚀 بدء الفحص والتحليل"):
+                total_cost = len(uploaded_files) * COINS_PER_CV
+                
+                if st.session_state.role != 'admin' and st.session_state.current_coins < total_cost:
+                    st.error(f"رصيدك لا يكفي! تحتاج {total_cost} كوينز لديك فقط {st.session_state.current_coins} كوينز.")
+                else:
+                    results = []
+                    progress_bar = st.progress(0)
+                    
+                    for idx, file in enumerate(uploaded_files):
+                        file_name = file.name
+                        text = ""
+                        try:
+                            file.seek(0)
+                            with pdfplumber.open(file) as pdf:
+                                for page in pdf.pages:
+                                    t = page.extract_text()
+                                    if t:
+                                        text += t + "\n"
+                        except Exception:
+                            text = ""
+                            
+                        # استخراج البيانات الأساسية
+                        email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
+                        phone_match = re.search(r'(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
+                        
+                        email = email_match.group(0) if email_match else "غير محدد"
+                        phone = phone_match.group(0) if phone_match else "غير محدد"
+                        name = file_name.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ')
+                        
+                        job_title = extract_job_title_with_ai(text)
+                        
+                        # حساب نسبة التوافق تقريبية بناءً على محتوى الكلمات
+                        score = min(95, max(45, len(text.split()) // 5 if len(text.split()) > 0 else 50))
+                        ai_analysis = analyze_cv_with_ai(text)
+                        
+                        ip_addr = get_user_ip()
+                        append_to_google_sheet_silent(name, job_title, email, phone, score, st.session_state.user_email, ip_addr, file_name)
+                        
+                        res_item = {
+                            "name": name,
+                            "job_title": job_title,
+                            "email": email,
+                            "phone": phone,
+                            "score": score,
+                            "ai_analysis": ai_analysis,
+                            "file_name": file_name
+                        }
+                        results.append(res_item)
+                        progress_bar.progress((idx + 1) / len(uploaded_files))
+                        
+                    # خصم الكوينز للمستخدم العادي
+                    if st.session_state.role != 'admin':
+                        new_coins = st.session_state.current_coins - total_cost
+                        update_user_coins(st.session_state.user_email, new_coins, "System", f"فحص {len(uploaded_files)} سيرة ذاتية")
+                        
+                    st.session_state.bulk_results = results
+                    st.success("تم التقييم بنجاح!")
+                    
+        # عرض النتائج إذا كانت متوفرة
+        if st.session_state.bulk_results:
+            st.markdown("---")
+            st.subheader("📊 نتائج التقييم:")
+            for res in st.session_state.bulk_results:
+                with st.expander(f"📌 {res['name']} - {res['job_title']} ({res['score']}%)", expanded=True):
+                    c1, c2 = st.columns([1, 2])
+                    with c1:
+                        fig = render_score_circle(res['score'], is_ats_cv=(res['score'] >= 75))
+                        st.pyplot(fig)
+                    with c2:
+                        st.markdown(f"**المسمى الوظيفي:** {res['job_title']}")
+                        st.markdown(f"**البريد:** {res['email']}")
+                        st.markdown(f"**الهاتف:** {res['phone']}")
+                        st.markdown("---")
+                        st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
+                        
+                        pdf_data = generate_pdf_report(res)
+                        st.download_button(
+                            label="📥 تحميل تقرير PDF التفصيلي",
+                            data=pdf_data,
+                            file_name=f"Report_{res['name']}.pdf",
+                            mime="application/pdf"
+                        )
