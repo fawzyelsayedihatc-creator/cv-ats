@@ -13,81 +13,78 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. إعدادات الصفحة والثيم الـ UI/UX الحديث (Figma SaaS Style) ---
+# --- 1. إعدادات الصفحة والثيم الاحترافي الفاتح (SaaS / Stripe Style) ---
 st.set_page_config(
-    page_title="CV ATS Pro - Dr. Fawzy",
-    page_icon="⚡",
+    page_title="CV ATS Professional Analyzer - Dr. Fawzy",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
     
     html, body, [class*="css"] {
-        font-family: 'Tajawal', 'Plus Jakarta Sans', sans-serif !important;
-        background-color: #FAFAFC;
-        color: #0F172A;
+        font-family: 'Tajawal', sans-serif !important;
+        background-color: #F8FAFC;
+        color: #1E293B;
     }
     
     .stApp { 
-        background-color: #FAFAFC;
+        background: linear-gradient(135deg, #F8FAFC 0%, #EEF2F6 100%);
     }
     
-    /* تخصيص القائمة الجانبية لتشبه لوحات تحكم Figma */
+    /* تخصيص القائمة الجانبية Sidebar باحترافية */
     [data-testid="stSidebar"] {
         background-color: #FFFFFF !important;
         border-right: 1px solid #E2E8F0;
-        box-shadow: 2px 0 15px rgba(0, 0, 0, 0.02);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.03);
     }
     
-    /* الأزرار العصرية بنظام SaaS Modern */
+    /* الأزرار الاحترافية بنظام SaaS الحديث */
     .stButton>button {
-        background: #0F172A !important;
+        background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%) !important;
         color: #FFFFFF !important;
-        font-size: 16px !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-        padding: 10px 20px !important;
+        font-size: 17px !important;
+        font-weight: 800 !important;
+        border-radius: 12px !important;
+        padding: 12px 24px !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
-        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 6px 18px rgba(79, 70, 229, 0.25) !important;
+        transition: all 0.3s ease !important;
         width: 100% !important;
     }
     .stButton>button:hover {
-        background: #1E293B !important;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 22px rgba(79, 70, 229, 0.35) !important;
     }
     
-    /* كارد التقارير والنتائج بستايل UI احترافي */
+    /* كارد التقارير والنتائج بستايل أنيق نظيف */
     .report-card {
         background: #FFFFFF;
-        border-radius: 14px;
+        border-radius: 16px;
         padding: 24px;
         border: 1px solid #E2E8F0;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
-        font-size: 15px !important;
-        font-weight: 600 !important;
-        line-height: 1.8 !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        line-height: 1.9 !important;
         color: #334155 !important;
     }
     
-    /* تخصيص الـ Inputs والـ Selectboxes */
+    /* تخصيص الـ Inputs */
     .stTextInput>div>div>input, .stNumberInput>div>div>input {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
         border-radius: 10px !important;
         border: 1px solid #CBD5E1 !important;
-        padding: 10px !important;
     }
     
-    /* عناوين رئيسية نظيفة ومميزة */
+    /* عناوين التبويبات والمقاطع */
     h1, h2, h3 {
         color: #0F172A !important;
         font-weight: 800 !important;
-        letter-spacing: -0.5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -339,29 +336,29 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- دوال الرسم المتناسقة مع ستايل الـ Figma نظيف ---
+# --- دوال الرسم المتناسقة مع الثيم الفاتح النظيف ---
 def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
     ax.set_facecolor('#FFFFFF')
     
     if is_ats_cv:
-        primary_color = '#0D9488'
+        primary_color = '#10B981'
         status_text = "ممتاز"
     else:
-        primary_color = '#D97706' if score >= 50 else '#DC2626'
+        primary_color = '#F59E0B' if score >= 50 else '#EF4444'
         status_text = ""
     
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
-           wedgeprops=dict(width=0.22, edgecolor='#FFFFFF', linewidth=3))
+           wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=3))
     
     if is_ats_cv:
-        ax.text(0, 0.12, f"{score}%", fontsize=26, fontweight='bold', ha='center', va='center', color='#0F172A')
-        ax.text(0, -0.15, status_text, fontsize=13, fontweight='bold', ha='center', va='center', color=primary_color)
+        ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
+        ax.text(0, -0.15, status_text, fontsize=14, fontweight='bold', ha='center', va='center', color=primary_color)
     else:
-        ax.text(0, 0.0, f"{score}%", fontsize=30, fontweight='bold', ha='center', va='center', color='#0F172A')
+        ax.text(0, 0.0, f"{score}%", fontsize=32, fontweight='bold', ha='center', va='center', color='#0F172A')
         
-    ax.text(0, -0.38, "ATS MATCH SCORE", fontsize=9, fontweight='bold', ha='center', va='center', color='#64748B')
+    ax.text(0, -0.38, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
     ax.axis('equal')
     plt.tight_layout()
     return fig
@@ -373,13 +370,13 @@ def render_category_bars(cat_scores):
     
     categories_ar = ["الكلمات المفتاحية", "الخبرات والمهام", "المهارات الفنية", "التنسيق والقالب", "التوافق العام"]
     y_pos = np.arange(len(categories_ar))
-    bars = ax.barh(y_pos, cat_scores, color='#0F172A', height=0.4)
+    bars = ax.barh(y_pos, cat_scores, color='#4F46E5', height=0.45)
     
     for bar, s in zip(bars, cat_scores):
-        bar.set_color('#0D9488' if s >= 75 else ('#D97706' if s >= 50 else '#DC2626'))
+        bar.set_color('#10B981' if s >= 75 else ('#F59E0B' if s >= 50 else '#EF4444'))
         
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(categories_ar, fontsize=10, fontweight='bold', color='#334155')
+    ax.set_yticklabels(categories_ar, fontsize=11, fontweight='bold', color='#334155')
     ax.set_xlim(0, 115)
     for spine in ['top', 'right', 'bottom', 'left']:
         ax.spines[spine].set_visible(False)
@@ -394,8 +391,8 @@ def render_category_bars(cat_scores):
 if not st.session_state.logged_in:
     _, col_center, _ = st.columns([0.5, 3, 0.5])
     with col_center:
-        st.markdown("<br><h1 style='text-align: center; color: #0F172A; font-size: 38px; font-weight: 900;'>⚡ CV ATS Workspace</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B; font-weight: 600; font-size: 16px;'>منصة احترافية متقدمة • تحت إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
+        st.markdown("<br><h1 style='text-align: center; color: #4F46E5; font-size: 42px; font-weight: 900;'>🚀 CV ATS Professional</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #64748B; font-weight: 700; font-size: 17px;'>النظام الذكي لفحص السير الذاتية • إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
         
         tab_login, tab_google, tab_signup = st.tabs(["🔑 تسجيل دخول", "🌐 دخول بـ Google", "📝 حساب جديد"])
         
@@ -469,8 +466,8 @@ else:
     
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
-        st.metric(label="🪙 رصيد الكوينز", value=f"{current_coins}")
-        st.metric(label="📄 الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
+        st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
+        st.metric(label="📄 عدد الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
         
         if st.session_state.role == 'admin':
             st.divider()
@@ -486,7 +483,7 @@ else:
         st.divider()
         st.subheader("💳 شحن رصيد")
         whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
-        st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#0F172A; color:white; font-weight:700; padding:10px; border-radius:8px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#25D366; color:white; font-weight:800; padding:12px; border-radius:10px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
 
         st.divider()
         if st.button("🚪 تسجيل الخروج", key="btn_logout"):
@@ -503,7 +500,7 @@ else:
     # =========================================================
     if st.session_state.current_page == "admin" and st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
-        st.write("إدارة المستخدمين والطلبات والكوينز بستايل متطور:")
+        st.write("إدارة المستخدمين والطلبات والكوينز باحترافية:")
         st.markdown("<br>", unsafe_allow_html=True)
 
         tab_pending_page, tab_active_page = st.tabs(["⏳ الطلبات المعلقة", "🟢 الحسابات والكوينز"])
@@ -529,7 +526,7 @@ else:
                 st.info("🎉 لا توجد طلبات معلقة حالياً.")
 
         with tab_active_page:
-            st.subheader("⚙️ تعديل أرصدة الكوينز للمستخدمين")
+            st.subheader("⚙️ تعديل أرصدة الكوينز")
             all_users = get_all_users()
             active_users = [u for u in all_users if u[2] == 1]
             
@@ -555,7 +552,7 @@ else:
     # 🟢 واجهة فحص وتحليل الـ CV الرئيسية
     # =========================================================
     else:
-        st.title("📄 نظام فحص السير الذاتية • ATS Dashboard")
+        st.title("📄 نظام فحص وتحليل الـ CV الاحترافي")
         
         uploaded_file = st.file_uploader("قم برفع ملف السيرة الذاتية (PDF)", type=["pdf"])
 
@@ -570,7 +567,7 @@ else:
                         remaining_scans = new_balance // COINS_PER_CV
                         st.toast(f"🪙 تم خصم {COINS_PER_CV} كوين بنجاح! المتبقي: {new_balance}", icon="🎉")
                     
-                    with st.spinner("🔍 جاري فحص الـ CV وتحليله باستخدام الذكاء الاصطناعي..."):
+                    with st.spinner("🔍 جاري الفحص المتقدم بالذكاء الاصطناعي..."):
                         extracted_text = ""
                         try:
                             uploaded_file.seek(0)
