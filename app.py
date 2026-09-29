@@ -19,6 +19,19 @@ from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import urllib.request
+import arabic_reshaper
+from bidi.algorithm import get_display
+
+# --- دالة لمعالجة النصوص العربية لظهر سليمة وليست مقلوبة ---
+def fix_arabic(text):
+    if not text:
+        return ""
+    try:
+        reshaped_text = arabic_reshaper.reshape(str(text))
+        bidi_text = get_display(reshaped_text)
+        return bidi_text
+    except Exception:
+        return text
 
 # --- 1. إعدادات الصفحة والتصميم ---
 st.set_page_config(
@@ -341,15 +354,14 @@ def analyze_cv_with_ai(cv_text):
             return response.text
     except Exception:
         pass
-    return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
+    return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# دالة توليد تقرير PDF احترافي مع دعم اللغة العربية وبدون علامات الماركداون
+# دالة توليد تقرير PDF احترافي مع معالجة النصوص العربية تماماً
 def generate_pdf_report(res):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
     story = []
     
-    # تحميل وتثبيت خط عربي مدعوم من الإنترنت لتجنب المربعات السوداء
     font_path = "Tajawal.ttf"
     if not os.path.exists(font_path):
         try:
@@ -394,13 +406,22 @@ def generate_pdf_report(res):
         parent=styles['Normal'],
         fontName=font_name,
         fontSize=11,
-        textColor=colors.HexColor('#0F172A')
+        textColor=colors.HexColor('#0F172A'),
+        alignment=2 # محاذاة لليمين
     )
     
+    # تجهيز النصوص ومعالجتها لمنع القلب والتداخل
+    name_fixed = fix_arabic(f"الاسم: {res['name']}")
+    job_fixed = fix_arabic(f"التخصص: {res['job_title']}")
+    email_fixed = fix_arabic(f"البريد: {res['email']}")
+    phone_fixed = fix_arabic(f"الهاتف: {res['phone']}")
+    score_fixed = fix_arabic(f"درجة توافق الـ ATS: {res['score']}%")
+    date_fixed = fix_arabic(f"تاريخ التقرير: {datetime.datetime.now().strftime('%Y-%m-%d')}")
+    
     header_data = [
-        [Paragraph(f"<b>الاسم:</b> {res['name']}", cell_style), Paragraph(f"<b>التخصص:</b> {res['job_title']}", cell_style)],
-        [Paragraph(f"<b>البريد:</b> {res['email']}", cell_style), Paragraph(f"<b>الهاتف:</b> {res['phone']}", cell_style)],
-        [Paragraph(f"<b>درجة توافق الـ ATS:</b> {res['score']}%", cell_style), Paragraph(f"<b>تاريخ التقرير:</b> {datetime.datetime.now().strftime('%Y-%m-%d')}", cell_style)]
+        [Paragraph(job_fixed, cell_style), Paragraph(name_fixed, cell_style)],
+        [Paragraph(phone_fixed, cell_style), Paragraph(email_fixed, cell_style)],
+        [Paragraph(date_fixed, cell_style), Paragraph(score_fixed, cell_style)]
     ]
     
     t = Table(header_data, colWidths=[260, 260])
@@ -411,14 +432,19 @@ def generate_pdf_report(res):
         ('BOTTOMPADDING', (0,0), (-1,-1), 10),
     ]))
     
-    story.append(Paragraph("تقرير فحص وتحليل السيرة الذاتية", title_style))
-    story.append(Paragraph("مؤسسة د. فوزي علي للاستشراف التعليمي والمهني", subtitle_style))
+    doc_title = fix_arabic("تقرير فحص وتحليل السيرة الذاتية")
+    doc_subtitle = fix_arabic("مؤسسة د. فوزي علي للاستشراف التعليمي والمهني")
+    
+    story.append(Paragraph(doc_title, title_style))
+    story.append(Paragraph(doc_subtitle, subtitle_style))
     story.append(t)
     story.append(Spacer(1, 20))
     
-    # تنظيف نص التحليل من علامات الماركداون الزائدة
+    # تنظيف ومعالجة نص التحليل سطر بسطر لضمان ظهور الكلمات والرموز سليمة تماماً
     clean_analysis = res['ai_analysis'].replace('**', '').replace('__', '')
-    analysis_text = clean_analysis.replace('\n', '<br/>')
+    analysis_lines = clean_analysis.split('\n')
+    processed_lines = [fix_arabic(line) for line in analysis_lines]
+    analysis_text = '<br/>'.join(processed_lines)
     
     body_style = ParagraphStyle(
         'BodyStyle',
@@ -426,19 +452,22 @@ def generate_pdf_report(res):
         fontName=font_name,
         fontSize=11,
         leading=18,
-        textColor=colors.HexColor('#0F172A')
+        textColor=colors.HexColor('#0F172A'),
+        alignment=2
     )
     
+    heading_text = fix_arabic("التحليل التفصيلي والتقييم:")
     heading_style = ParagraphStyle(
         'HeadingStyle',
         parent=styles['Heading2'],
         fontName=font_name,
         fontSize=14,
         textColor=colors.HexColor('#059669'),
-        spaceAfter=10
+        spaceAfter=10,
+        alignment=2
     )
 
-    story.append(Paragraph("التحليل التفصيلي والتقييم:", heading_style))
+    story.append(Paragraph(heading_text, heading_style))
     story.append(Spacer(1, 5))
     story.append(Paragraph(analysis_text, body_style))
     
