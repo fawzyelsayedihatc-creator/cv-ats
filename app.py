@@ -311,6 +311,14 @@ def approve_user_db(email):
     conn.close()
     log_user_activity(email, "تفعيل الحساب", 0, "تم الموافقة على تفعيل الحساب من قبل الأدمن")
 
+def suspend_user_db(email):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET is_approved = 0 WHERE email = ?", (email.strip().lower(),))
+    conn.commit()
+    conn.close()
+    log_user_activity(email, "إيقاف الحساب", 0, "تم إيقاف وتعطيل الحساب من قبل الأدمن")
+
 def get_all_users():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -549,7 +557,7 @@ if not st.session_state.logged_in:
                     if success:
                         email, password, coins, is_approved, role = user_data
                         if is_approved == 0 and role != 'admin':
-                            st.warning("⏳ حسابك قيد المراجعة بانتظار موافقة د. فوزي لتفعيله.")
+                            st.warning("⚠️ عذراً، تم إيقاف أو تعطيل هذا الحساب من قبل الإدارة. يرجى مراجعة د. فوزي لإعادة فتحه.")
                         else:
                             st.session_state.logged_in = True
                             st.session_state.user_email = email
@@ -580,7 +588,7 @@ if not st.session_state.logged_in:
                         st.info("⏳ تم إنشاء حسابك وهو في انتظار موافقة د. فوزي للتفعيل.")
                     else:
                         if user[1] == 0 and user[2] != 'admin':
-                            st.warning("⏳ حسابك مسجل بالفعل وفي انتظار موافقة الأدمن.")
+                            st.warning("⚠️ عذراً، تم إيقاف أو تعطيل هذا الحساب من قبل الإدارة. يرجى مراجعة د. فوزي لإعادة فتحه.")
                         else:
                             st.session_state.logged_in = True
                             st.session_state.user_email = g_clean
@@ -740,7 +748,7 @@ else:
     # =========================================================
     elif st.session_state.current_page == "admin" and st.session_state.role == 'admin':
         st.title("👑 لوحة تحكم الأدمن والتحليلات")
-        st.write("إدارة المستخدمين، شحن الرصيد، تفعيل الحسابات الجديدة، واستعراض تقارير نشاط النظام.")
+        st.write("إدارة المستخدمين، شحن الرصيد، تفعيل أو إيقاف الحسابات، واستعراض تقارير نشاط النظام.")
         st.markdown("<br>", unsafe_allow_html=True)
         
         users_list = get_all_users()
@@ -769,10 +777,18 @@ else:
                 
                 with col_b:
                     st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("✅ تفعيل الحساب المعلق"):
-                        approve_user_db(selected_user_email)
-                        st.success(f"تم تفعيل الحساب {selected_user_email} بنجاح!")
-                        st.rerun()
+                    # زر تفعيل الحساب وزر إيقاف الحساب جنباً إلى جنب
+                    col_btn1, col_btn2 = st.columns(2)
+                    with col_btn1:
+                        if st.button("✅ تفعيل الحساب"):
+                            approve_user_db(selected_user_email)
+                            st.success(f"تم تفعيل الحساب {selected_user_email} بنجاح!")
+                            st.rerun()
+                    with col_btn2:
+                        if st.button("⛔ إيقاف الحساب"):
+                            suspend_user_db(selected_user_email)
+                            st.warning(f"تم إيقاف وتعطيل الحساب {selected_user_email} بنجاح!")
+                            st.rerun()
 
                 st.markdown("---")
                 st.markdown(f"### 📈 سجل نشاطات المستخدم: `{selected_user_email}`")
