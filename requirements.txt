@@ -1,10 +1,12 @@
 streamlit
-pdfplumber
 pandas
 numpy
 matplotlib
+pdfplumber
+openpyxl
 google-generativeai
+pypdfium2
 gspread
 oauth2client
-openpyxl
+extra-streamlit-components
 reportlab
