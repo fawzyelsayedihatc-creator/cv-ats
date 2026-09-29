@@ -27,9 +27,11 @@ def fix_arabic(text):
     if not text:
         return ""
     try:
-        reshaped_text = arabic_reshaper.reshape(str(text))
-        bidi_text = get_display(reshaped_text)
-        return bidi_text
+        # إذا كان النص يحتوي على حروف عربية، نقوم بإعادة تشكيله وعكس اتجاهه ليعرض بشكل صحيح
+        if any('\u0600' <= c <= \u06ff for c in str(text)):
+            reshaped_text = arabic_reshaper.reshape(str(text))
+            return get_display(reshaped_text)
+        return str(text)
     except Exception:
         return text
 
@@ -251,7 +253,7 @@ if not st.session_state.logged_in and "user" in query_params:
         st.session_state.role = user[2]
         st.session_state.current_coins = user[3]
 
-# --- 6. وظائف مساعدة وتحميل خط عربي آمن ---
+# --- 6. وظائف استخراج البيانات بالذكاء الاصطناعي ---
 def login_user(email, password):
     email_clean = email.strip().lower()
     conn = get_db_connection()
@@ -327,24 +329,33 @@ def convert_pdf_to_images(uploaded_file):
         pass
     return images_bytes
 
-def extract_job_title_with_ai(cv_text):
+def extract_cv_info_with_ai(cv_text):
     prompt = f"""
-    قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية.
-    أعد لي **فقط** المسمى الوظيفي أو التخصص في كلمة إلى ثلاث كلمات كحد أقصى، بدون أي مقدمات.
-    إذا لم تجد مسمى وظيفي واضح، اكتب: غير محدد.
+    قم بقراءة نص السيرة الذاتية التالي بعناية واستخراج البيانات التالية بدقة:
+    1. الاسم الكامل لصاحب السيرة الذاتية (إذا كان باللغة العربية اكتبه مرتباً وصحيحاً من اليمين لليسار، وإذا كان بالإنجليزية اكتبه كما هو).
+    2. التخصص الرئيسي أو المسمى الوظيفي المستنتج بناءً على خبراته ودراسته في السيرة الذاتية (في كلمة إلى ثلاث كلمات كحد أقصى).
+    
+    أعطني النتيجة بصيغة JSON صارمة تحتوي فقط على الحقلين التاليين بدون أي مقدمات أو نص إضافي:
+    {{"name": "...", "job_title": "..."}}
     
     نص السيرة الذاتية:
-    {cv_text[:2000]}
+    {cv_text[:3000]}
     """
     try:
         if ai_model:
             response = ai_model.generate_content(prompt)
-            title = response.text.strip().replace("\n", "")
-            if title and len(title) < 50:
-                return title
+            clean_res = response.text.strip().replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_res)
+            name = data.get("name", "غير محدد")
+            job_title = data.get("job_title", "غير محدد")
+            return name, job_title
     except Exception:
         pass
-    return "غير محدد"
+    
+    # خيار بديل في حال حدوث خطأ
+    lines = [line.strip() for line in cv_text.split('\n') if line.strip()]
+    fallback_name = lines[0] if lines else "غير محدد"
+    return fallback_name, "غير محدد"
 
 def analyze_cv_with_ai(cv_text):
     prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
@@ -354,7 +365,7 @@ def analyze_cv_with_ai(cv_text):
             return response.text
     except Exception:
         pass
-    return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
+    return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
 # دالة توليد تقرير PDF احترافي مع معالجة النصوص العربية تماماً
 def generate_pdf_report(res):
@@ -407,10 +418,9 @@ def generate_pdf_report(res):
         fontName=font_name,
         fontSize=11,
         textColor=colors.HexColor('#0F172A'),
-        alignment=2 # محاذاة لليمين
+        alignment=2
     )
     
-    # تجهيز النصوص ومعالجتها لمنع القلب والتداخل
     name_fixed = fix_arabic(f"الاسم: {res['name']}")
     job_fixed = fix_arabic(f"التخصص: {res['job_title']}")
     email_fixed = fix_arabic(f"البريد: {res['email']}")
@@ -440,7 +450,6 @@ def generate_pdf_report(res):
     story.append(t)
     story.append(Spacer(1, 20))
     
-    # تنظيف ومعالجة نص التحليل سطر بسطر لضمان ظهور الكلمات والرموز سليمة تماماً
     clean_analysis = res['ai_analysis'].replace('**', '').replace('__', '')
     analysis_lines = clean_analysis.split('\n')
     processed_lines = [fix_arabic(line) for line in analysis_lines]
@@ -707,9 +716,10 @@ else:
                             except Exception:
                                 pass
                             
-                            lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
-                            name = lines[0] if lines else "غير محدد"
-                            job_title = extract_job_title_with_ai(extracted_text)
+                            # استخراج الاسم والتخصص بدقة واحترافية بالذكاء الاصطناعي
+                            raw_name, job_title = extract_cv_info_with_ai(extracted_text)
+                            name = fix_arabic(raw_name)
+                            job_title = fix_arabic(job_title)
                             
                             email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
                             email = email_m.group(0) if email_m else "غير مذكور"
@@ -724,7 +734,7 @@ else:
                             bulk_data_list.append({
                                 "اسم الملف": uf.name,
                                 "الاسم المستخرج": name,
-                                "التسمى الوظيفي": job_title,
+                                "التسمي الوظيفي": job_title,
                                 "البريد الإلكتروني": email,
                                 "الهاتف": phone,
                                 "درجة ATS": f"{score}%"
@@ -898,10 +908,11 @@ else:
                             st.error("❌ تعذر قراءة النص داخل الملف.")
                         else:
                             pdf_images = convert_pdf_to_images(uploaded_file)
-                            lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
-                            name = lines[0] if lines else "غير محدد"
                             
-                            job_title = extract_job_title_with_ai(extracted_text)
+                            # استخدام الذكاء الاصطناعي لاستخراج الاسم والتخصص بدقة ومعالجة العربي
+                            raw_name, raw_job = extract_cv_info_with_ai(extracted_text)
+                            name = fix_arabic(raw_name)
+                            job_title = fix_arabic(raw_job)
                             
                             email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
                             email = email_m.group(0) if email_m else "غير مذكور"
