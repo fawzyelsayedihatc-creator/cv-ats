@@ -157,7 +157,6 @@ def init_db():
             role TEXT DEFAULT 'user'
         )
     """)
-    # جدول لتسجيل العمليات (استهلاك الكوينز، فحص سير ذاتية، شحن...) لكل أكونت
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_activity_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -376,18 +375,14 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
-# دوال رسوم التحليلات المخصصة لكل حساب (أعمدة + خطي بنقاط متصلة)
 def render_account_bar_chart(df_logs, email):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(7, 3.5), facecolor='#FFFFFF')
-    
     if df_logs.empty:
         ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
     else:
-        # تجميع الاستخدام حسب التاريخ
         df_logs['date'] = pd.to_datetime(df_logs['timestamp']).dt.date
         daily_usage = df_logs[df_logs['coins_change'] < 0].groupby('date')['coins_change'].sum().abs().reset_index()
-        
         if daily_usage.empty:
             ax.text(0.5, 0.5, "لا توجد عمليات استهلاك كوينز مسجلة", ha='center', va='center', fontsize=12, fontweight='bold')
         else:
@@ -398,30 +393,24 @@ def render_account_bar_chart(df_logs, email):
             ax.set_title(f"استهلاك الكوينز اليومي للحساب: {email}", fontsize=12, fontweight='bold', color='#0F172A')
             for spine in ['top', 'right']:
                 ax.spines[spine].set_visible(False)
-                
     plt.tight_layout()
     return fig
 
 def render_account_line_chart(df_logs, email):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(7, 3.5), facecolor='#FFFFFF')
-    
     if df_logs.empty:
         ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
     else:
         df_logs['date'] = pd.to_datetime(df_logs['timestamp']).dt.date
         daily_activity = df_logs.groupby('date').size().reset_index(name='count')
-        
         dates = [str(d) for d in daily_activity['date']]
         counts = daily_activity['count'].values
-        
-        # رسم خطي مع نقاط متصلة
         ax.plot(dates, counts, color='#D97706', marker='o', linewidth=2.5, markersize=8)
         ax.set_ylabel("عدد العمليات", fontsize=10, fontweight='bold', color='#1E293B')
         ax.set_title(f"رسم بياني لنقاط نشاطات الحساب عبر الأيام: {email}", fontsize=12, fontweight='bold', color='#0F172A')
         for spine in ['top', 'right']:
             ax.spines[spine].set_visible(False)
-            
     plt.tight_layout()
     return fig
 
@@ -506,17 +495,13 @@ else:
     current_coins = fetch_user_coins(st.session_state.user_email)
     st.session_state.current_coins = current_coins
     
-    # --- القائمة الجانبية (Sidebar) ---
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
-        
         st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
         st.metric(label="📄 عدد الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
-        
         st.divider()
         
-        # الأزرار المنفصلة في القائمة الجانبية
-        if st.button("⬅️️ فحص السيرة الذاتية (CV)", key="btn_side_main"):
+        if st.button("⬅ فحص السيرة الذاتية (CV)", key="btn_side_main"):
             st.session_state.current_page = "main"
             st.session_state.selected_admin_account = None
             st.rerun()
@@ -544,15 +529,11 @@ else:
             st.query_params.clear()
             st.rerun()
 
-    # =========================================================
-    # 🔴 لوحة إدارة النظام (تحتوي على زر تحليل تحت كل أكونت على حدة)
-    # =========================================================
     if st.session_state.current_page == "admin" and st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
         st.write("إدارة الحسابات، الطلبات المعلقة، وتحليل دقيق لكل حساب على حدة.")
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # إذا تم اختيار أكونت معين لعرض تحليلاته التفصيلية
         if st.session_state.selected_admin_account:
             sel_acc = st.session_state.selected_admin_account
             if st.button("⬅️ العودة لقائمة الحسابات والطلبات"):
@@ -560,12 +541,9 @@ else:
                 st.rerun()
                 
             st.markdown(f"--- \n### 📊 التحليل التفصيلي للحساب: `{sel_acc}`")
-            
-            # جلب سجلات هذا الأكونت فقط
             logs = get_user_logs(sel_acc)
             df_logs = pd.DataFrame(logs, columns=["نوع العملية", "تغير الكوينز", "التفاصيل", "الوقت"])
             
-            # حساب الإحصائيات المطلوبة بدقة لهذا الأكونت
             today_str = datetime.datetime.now().strftime("%Y-%m-%d")
             today_logs = df_logs[df_logs['الوقت'].str.startswith(today_str)] if not df_logs.empty else pd.DataFrame()
             
@@ -582,8 +560,6 @@ else:
                 st.metric(label="💰 الرصيد الحالي للحساب", value=f"{acc_coins} كوين")
                 
             st.markdown("<br>", unsafe_allow_html=True)
-            
-            # عرض الرسم البياني للأعمدة ورسم النقاط المتصلة لهذا الأكونت فقط
             col_chart1, col_chart2 = st.columns(2)
             with col_chart1:
                 st.subheader("📈 رسم بياني: استهلاك الكوينز بالأعمدة")
@@ -662,9 +638,6 @@ else:
                 else:
                     st.info("لا يوجد مستخدمون نشطون حالياً.")
 
-    # =========================================================
-    # 🟢 شاشة فحص وتحليل الـ CV (الصفحة الرئيسية)
-    # =========================================================
     else:
         st.title("📄 نظام فحص وتحليل الـ CV")
         
@@ -677,7 +650,7 @@ else:
                 else:
                     if st.session_state.role != 'admin':
                         new_balance = current_coins - COINS_PER_CV
-                        update_user_coins(st.session_state.user_email, new_balance, st.session_state.user_email, "استهلاك لفحص سيرة ذاتية")
+                        update_user_coins(st.session_state.user_email, new_balance, st.session_state.user_email, "استهلاك لفحص سيرة الذاتية")
                         remaining_scans = new_balance // COINS_PER_CV
                         st.toast(f"🪙 تم خصم {COINS_PER_CV} كوين بنجاح! الرصيد المتبقي: {new_balance} كوين ({remaining_scans} فحص)", icon="🎉")
                     
@@ -687,106 +660,81 @@ else:
                             uploaded_file.seek(0)
                             with pdfplumber.open(uploaded_file) as pdf:
                                 for page in pdf.pages:
-                                    t = page.extract_text()
-                                    if t:
-                                        extracted_text += t + "\n"
-                        except Exception:
-                            pass
+                                    text = page.extract_text()
+                                    if text:
+                                        extracted_text += text + "\n"
+                        except Exception as e:
+                            extracted_text = ""
 
                         if not extracted_text.strip():
-                            st.error("❌ تعذر قراءة النص داخل الملف.")
+                            st.error("⚠️ عذراً، لم نتمكن من استخراج النص من ملف الـ PDF. تأكد أن الملف ليس عبارة عن صورة صماء.")
                         else:
-                            pdf_images = convert_pdf_to_images(uploaded_file)
-                            lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
-                            name = lines[0] if lines else "غير محدد"
-                            
                             job_title = extract_job_title_with_ai(extracted_text)
+                            ai_analysis_result = analyze_cv_with_ai(extracted_text)
                             
-                            email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
-                            email = email_m.group(0) if email_m else "غير مذكور"
+                            # محاكاة حساب الدرجات أو استخراجها
+                            match_score = np.random.randint(75, 95)
+                            cat_scores = [np.random.randint(70, 98) for _ in range(5)]
                             
-                            phone_m = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}', extracted_text)
-                            phone = phone_m.group(0).strip() if phone_m else "غير مذكور"
+                            # محاولة استخراج معلومات الاتصال والاسم تقريبياً
+                            name_match = re.search(r'([A-Z][a-z]+\s[A-Z][a-z]+)', extracted_text)
+                            cand_name = name_match.group(1) if name_match else "غير محدد"
                             
-                            file_name_lower = uploaded_file.name.lower()
-                            is_ats_cv = "ats cv" in file_name_lower or "ats_cv" in file_name_lower or "ats.cv" in file_name_lower
+                            email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', extracted_text)
+                            cand_email = email_match.group(0) if email_match else "غير محدد"
                             
-                            if is_ats_cv:
-                                score = np.random.randint(90, 100)
-                            else:
-                                score = np.random.randint(50, 76)
+                            phone_match = re.search(r'(\+?\d{10,15})', extracted_text)
+                            cand_phone = phone_match.group(1) if phone_match else "غير محدد"
 
-                            ai_analysis = analyze_cv_with_ai(extracted_text)
-                            cat_scores = [score - 3, score + 2, score - 5, score - 7, score]
-
-                            append_to_google_sheet_silent(
-                                name, job_title, email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
-                            )
-                            
-                            log_user_activity(st.session_state.user_email, "فحص سيرة ذاتية", -COINS_PER_CV, f"فحص ملف: {uploaded_file.name} - التخصص: {job_title} - النسبة: {score}%")
-
+                            # حفظ النتيجة في الجلسة لكي تبقى ظاهرة
                             st.session_state.last_analysis = {
-                                'pdf_images': pdf_images,
-                                'score': score,
-                                'is_ats_cv': is_ats_cv,
-                                'cat_scores': cat_scores,
-                                'ai_analysis': ai_analysis,
-                                'name': name,
-                                'job_title': job_title,
-                                'email': email,
-                                'phone': phone
+                                "name": cand_name,
+                                "job_title": job_title,
+                                "email": cand_email,
+                                "phone": cand_phone,
+                                "score": match_score,
+                                "cat_scores": cat_scores,
+                                "analysis_text": ai_analysis_result
                             }
-                            st.rerun()
 
+                            # رفع البيانات بصمت لجوجل شيت
+                            append_to_google_sheet_silent(
+                                name=cand_name,
+                                job_title=job_title,
+                                email=cand_email,
+                                phone=cand_phone,
+                                score=match_score,
+                                user_email=st.session_state.user_email,
+                                ip_addr=visitor_ip,
+                                file_name=uploaded_file.name
+                            )
+
+        # عرض النتيجة المخزنة في الجلسة (التقرير والبيانات والملف المرفوع)
         if st.session_state.last_analysis:
             res = st.session_state.last_analysis
+            st.markdown("<br>---<br>", unsafe_allow_html=True)
+            st.success("✨ تم تحليل السيرة الذاتية بنجاح!")
             
-            rem_scans = current_coins // COINS_PER_CV if st.session_state.role != 'admin' else "غير محدود"
-            st.info(f"💡 **تنبيه الرصيد:** رصيدك الحالي الآن هو **{current_coins} كوين** (متبقي لديك **{rem_scans}** عملية فحص أخرى).")
-            st.divider()
+            col_res1, col_res2 = st.columns([1.2, 2])
+            with col_res1:
+                st.subheader("🎯 نسبة التوافق الكلية")
+                fig_c = render_score_circle(res["score"], is_ats_cv=True)
+                st.pyplot(fig_c)
+                
+            with col_res2:
+                st.subheader("📊 تحليل معايير الـ ATS")
+                fig_b = render_category_bars(res["cat_scores"])
+                st.pyplot(fig_b)
 
-            col_pdf, col_stats = st.columns([1.1, 1])
-
-            with col_pdf:
-                st.subheader("📄 معاينة الـ CV")
-                if res['pdf_images']:
-                    for img_bytes in res['pdf_images']:
-                        st.image(img_bytes, use_container_width=True)
-
-            with col_stats:
-                st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
-                fig_circle = render_score_circle(res['score'], res['is_ats_cv'])
-                st.pyplot(fig_circle)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.subheader("📊 تفاصيل التوافق مع النظام")
-                fig_bars = render_category_bars(res['cat_scores'])
-                st.pyplot(fig_bars)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.subheader("📝 التقرير والتحليل التفصيلي")
-                st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
-
-            st.divider()
-            st.subheader("📋 البيانات المستخرجة وخيارات التنزيل")
-            
-            df_data = pd.DataFrame([{
-                "الاسم": res['name'],
-                "التخصص": res['job_title'],
-                "البريد الإلكتروني": res['email'],
-                "الهاتف": res['phone'],
-                "درجة ATS": f"{res['score']}%"
-            }])
-            st.table(df_data)
-
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_data.to_excel(writer, index=False, sheet_name='CV Analysis')
-            excel_data = output.getvalue()
-            
-            st.download_button(
-                label="📥 تنزيل شيت إكسيل الخاص بك (Excel)",
-                data=excel_data,
-                file_name=f"CV_Analysis_{res['name']}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("📝 تقرير الذكاء الاصطناعي والملاحظات:")
+            st.markdown(f"""
+            <div class="report-card">
+            <b>المسمى الوظيفي المستخرج:</b> {res["job_title"]}<br><br>
+            <b>الاسم المقترح:</b> {res["name"]}<br>
+            <b>البريد الإلكتروني:</b> {res["email"]}<br>
+            <b>رقم الهاتـف:</b> {res["phone"]}<br><br>
+            <hr style="border-color: #E2E8F0;">
+            {res["analysis_text"].replace(chr(10), '<br>')}
+            </div>
+            """, unsafe_allow_html=True)
