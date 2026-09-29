@@ -295,7 +295,7 @@ def extract_job_title_with_ai(cv_text):
     return "غير محدد"
 
 def analyze_cv_with_ai(cv_text):
-    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
+    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
     try:
         if ai_model:
             response = ai_model.generate_content(prompt)
@@ -304,20 +304,29 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- دالة رسم الدائرة (مُعدّلة: إلغاء كلمة ممتاز وإلغاء اللون الأخضر) ---
-def render_score_circle(score):
+# --- دالة رسم الدائرة (مُعدّلة: إرجاع كلمة "ممتاز" للشروط الخاصة، وإلغاء أي كلمات في الحالة العادية مع الألوان المطلوبة) ---
+def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
     
-    # الاعتماد على البرتقالي والأحمر فقط مع إلغاء الأخضر
-    primary_color = '#D97706' if score >= 50 else '#DC2626'
-    status_text = "متوسط" if score >= 50 else "ضعيف"
+    if is_ats_cv:
+        primary_color = '#10B981'  # أخضر لـ ممتاز
+        status_text = "ممتاز"
+    else:
+        primary_color = '#D97706' if score >= 50 else '#DC2626'  # برتقالي أو أحمر
+        status_text = ""  # بدون أي كلمات نهائياً
     
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
            wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
-    ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
-    ax.text(0, -0.15, status_text, fontsize=13, fontweight='bold', ha='center', va='center', color=primary_color)
-    ax.text(0, -0.35, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
+    
+    if is_ats_cv:
+        ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
+        ax.text(0, -0.15, status_text, fontsize=14, fontweight='bold', ha='center', va='center', color=primary_color)
+    else:
+        # إذا لم تكن هناك كلمة، نرفع النسبة قليلاً لتتوسط الدائرة بشكل جمالي
+        ax.text(0, 0.0, f"{score}%", fontsize=32, fontweight='bold', ha='center', va='center', color='#0F172A')
+        
+    ax.text(0, -0.38, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
     ax.axis('equal')
     plt.tight_layout()
     return fig
@@ -562,10 +571,12 @@ else:
                             phone_m = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}', extracted_text)
                             phone = phone_m.group(0).strip() if phone_m else "غير مذكور"
                             
-                            # --- الشرط ثابت بدون تعديل: البحث عن ATS CV ---
+                            # --- التحقق من اسم الملف للحالة الأولى أو الثانية ---
                             file_name_lower = uploaded_file.name.lower()
-                            if "ats cv" in file_name_lower or "ats_cv" in file_name_lower or "ats.cv" in file_name_lower:
-                                score = np.random.randint(90, 101)  # بين 90% و 100%
+                            is_ats_cv = "ats cv" in file_name_lower or "ats_cv" in file_name_lower or "ats.cv" in file_name_lower
+                            
+                            if is_ats_cv:
+                                score = np.random.randint(90, 100)  # بين 90% و 99%
                             else:
                                 score = np.random.randint(50, 76)   # بين 50% و 75% بحد أقصى
 
@@ -580,6 +591,7 @@ else:
                             st.session_state.last_analysis = {
                                 'pdf_images': pdf_images,
                                 'score': score,
+                                'is_ats_cv': is_ats_cv,
                                 'cat_scores': cat_scores,
                                 'ai_analysis': ai_analysis,
                                 'name': name,
@@ -607,7 +619,7 @@ else:
 
             with col_stats:
                 st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
-                fig_circle = render_score_circle(res['score'])
+                fig_circle = render_score_circle(res['score'], res['is_ats_cv'])
                 st.pyplot(fig_circle)
 
                 st.markdown("<br>", unsafe_allow_html=True)
