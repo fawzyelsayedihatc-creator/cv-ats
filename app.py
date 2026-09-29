@@ -22,30 +22,29 @@ import urllib.request
 import arabic_reshaper
 from bidi.algorithm import get_display
 
-# --- دالة لمعالجة النصوص العربية لظهر سليمة وليست مقلوبة ---
-def fix_arabic(text):
-    if not text:
-        return ""
-    try:
-        reshaped_text = arabic_reshaper.reshape(str(text))
-        bidi_text = get_display(reshaped_text)
-        return bidi_text
-    except Exception:
-        return text
-
-# --- دالة لتنظيف الأحرف غير المسموح بها في إكسل و openpyxl ---
-def clean_illegal_chars(val):
-    if isinstance(val, str):
-        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', val)
-    return val
-
-# --- 1. إعدادات الصفحة والتصميم ---
+# --- 1. إعدادات الصفحة والتصميم (يجب أن تكون في البداية تماماً) ---
 st.set_page_config(
     page_title="CV ATS Professional Analyzer - Dr. Fawzy",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- التقاط الـ Query Parameters مباشرة ومزامنتها لمنع الرجوع للرئيسية عند الـ Refresh ---
+query_params = st.query_params
+
+if 'current_page' not in st.session_state:
+    if "page" in query_params:
+        st.session_state.current_page = query_params["page"]
+    else:
+        st.session_state.current_page = "main"
+
+def switch_page(page_name):
+    st.session_state.current_page = page_name
+    st.query_params["page"] = page_name
+    if st.session_state.get('user_email'):
+        st.query_params["user"] = st.session_state.user_email
+    st.rerun()
 
 st.markdown("""
 <style>
@@ -81,6 +80,23 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# --- دالة لمعالجة النصوص العربية لظهر سليمة وليست مقلوبة ---
+def fix_arabic(text):
+    if not text:
+        return ""
+    try:
+        reshaped_text = arabic_reshaper.reshape(str(text))
+        bidi_text = get_display(reshaped_text)
+        return bidi_text
+    except Exception:
+        return text
+
+# --- دالة لتنظيف الأحرف غير المسموح بها في إكسل و openpyxl ---
+def clean_illegal_chars(val):
+    if isinstance(val, str):
+        return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', val)
+    return val
 
 # --- 2. الالتقاط التلقائي للـ IP ---
 def get_user_ip():
@@ -241,9 +257,7 @@ if 'current_coins' not in st.session_state:
 if 'selected_admin_account' not in st.session_state:
     st.session_state.selected_admin_account = None
 
-query_params = st.query_params
-
-# استرجاع الجلسة من الرابط إذا وجت
+# استرجاع الجلسة من الرابط إذا وجدت
 if not st.session_state.logged_in and "user" in query_params:
     saved_user = query_params["user"]
     conn = get_db_connection()
@@ -256,20 +270,6 @@ if not st.session_state.logged_in and "user" in query_params:
         st.session_state.user_email = user[0]
         st.session_state.role = user[2]
         st.session_state.current_coins = user[3]
-
-# مزامنة الصفحة الحالية مع الرابط (URL Query Parameters) للحفاظ عليها عند الـ Refresh والـ Back
-if "page" in query_params:
-    st.session_state.current_page = query_params["page"]
-else:
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "main"
-
-def switch_page(page_name):
-    st.session_state.current_page = page_name
-    st.query_params["page"] = page_name
-    if st.session_state.user_email:
-        st.query_params["user"] = st.session_state.user_email
-    st.rerun()
 
 # --- 6. وظائف مساعدة وتحميل خط عربي آمن ---
 def login_user(email, password):
