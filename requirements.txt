@@ -10,3 +10,5 @@ gspread
 oauth2client
 extra-streamlit-components
 reportlab
+arabic-reshaper
+python-bidi
