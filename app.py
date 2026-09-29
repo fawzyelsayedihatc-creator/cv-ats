@@ -18,6 +18,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+import urllib.request
 
 # --- 1. إعدادات الصفحة والتصميم ---
 st.set_page_config(
@@ -237,7 +238,7 @@ if not st.session_state.logged_in and "user" in query_params:
         st.session_state.role = user[2]
         st.session_state.current_coins = user[3]
 
-# --- 6. وظائف مساعدة وتصدير PDF ---
+# --- 6. وظائف مساعدة وتحميل خط عربي آمن ---
 def login_user(email, password):
     email_clean = email.strip().lower()
     conn = get_db_connection()
@@ -342,19 +343,36 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# دالة توليد تقرير PDF احترافي للعميل
+# دالة توليد تقرير PDF احترافي مع دعم اللغة العربية وبدون علامات الماركداون
 def generate_pdf_report(res):
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
     story = []
     
-    # تسجيل خط يدعم العربية أو استخدام الخط الافتراضي
+    # تحميل وتثبيت خط عربي مدعوم من الإنترنت لتجنب المربعات السوداء
+    font_path = "Tajawal.ttf"
+    if not os.path.exists(font_path):
+        try:
+            url = "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Regular.ttf"
+            urllib.request.urlretrieve(url, font_path)
+        except Exception:
+            pass
+
+    if os.path.exists(font_path):
+        try:
+            pdfmetrics.registerFont(TTFont('Tajawal', font_path))
+            font_name = 'Tajawal'
+        except Exception:
+            font_name = 'Helvetica'
+    else:
+        font_name = 'Helvetica'
+
     styles = getSampleStyleSheet()
     
     title_style = ParagraphStyle(
         'TitleStyle',
         parent=styles['Heading1'],
-        fontName='Helvetica-Bold',
+        fontName=font_name,
         fontSize=20,
         textColor=colors.HexColor('#059669'),
         alignment=1,
@@ -364,20 +382,28 @@ def generate_pdf_report(res):
     subtitle_style = ParagraphStyle(
         'SubTitleStyle',
         parent=styles['Normal'],
-        fontName='Helvetica',
+        fontName=font_name,
         fontSize=12,
         textColor=colors.HexColor('#475569'),
         alignment=1,
         spaceAfter=25
     )
+
+    cell_style = ParagraphStyle(
+        'CellStyle',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=11,
+        textColor=colors.HexColor('#0F172A')
+    )
     
     header_data = [
-        [Paragraph(f"<b>الاسم:</b> {res['name']}", styles['Normal']), Paragraph(f"<b>التخصص:</b> {res['job_title']}", styles['Normal'])],
-        [Paragraph(f"<b>البريد:</b> {res['email']}", styles['Normal']), Paragraph(f"<b>الهاتف:</b> {res['phone']}", styles['Normal'])],
-        [Paragraph(f"<b>درجة توافق الـ ATS:</b> {res['score']}%", styles['Normal']), Paragraph(f"<b>تاريخ التقرير:</b> {datetime.datetime.now().strftime('%Y-%m-%d')}", styles['Normal'])]
+        [Paragraph(f"<b>الاسم:</b> {res['name']}", cell_style), Paragraph(f"<b>التخصص:</b> {res['job_title']}", cell_style)],
+        [Paragraph(f"<b>البريد:</b> {res['email']}", cell_style), Paragraph(f"<b>الهاتف:</b> {res['phone']}", cell_style)],
+        [Paragraph(f"<b>درجة توافق الـ ATS:</b> {res['score']}%", cell_style), Paragraph(f"<b>تاريخ التقرير:</b> {datetime.datetime.now().strftime('%Y-%m-%d')}", cell_style)]
     ]
     
-    t = Table(header_data, colWidths=[270, 270])
+    t = Table(header_data, colWidths=[260, 260])
     t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F1F5F9')),
         ('PADDING', (0,0), (-1,-1), 10),
@@ -385,22 +411,35 @@ def generate_pdf_report(res):
         ('BOTTOMPADDING', (0,0), (-1,-1), 10),
     ]))
     
-    story.append(Paragraph("تقرير فحص وتحليل السيرة الذاتية (ATS Professional Report)", title_style))
-    story.append(Paragraph("مؤسسة د. فوزي علي للأستشراف التعليمي والمهني", subtitle_style))
+    story.append(Paragraph("تقرير فحص وتحليل السيرة الذاتية", title_style))
+    story.append(Paragraph("مؤسسة د. فوزي علي للاستشراف التعليمي والمهني", subtitle_style))
     story.append(t)
     story.append(Spacer(1, 20))
     
-    analysis_text = res['ai_analysis'].replace('\n', '<br/>')
+    # تنظيف نص التحليل من علامات الماركداون الزائدة
+    clean_analysis = res['ai_analysis'].replace('**', '').replace('__', '')
+    analysis_text = clean_analysis.replace('\n', '<br/>')
+    
     body_style = ParagraphStyle(
         'BodyStyle',
         parent=styles['Normal'],
-        fontName='Helvetica',
+        fontName=font_name,
         fontSize=11,
-        leading=16,
+        leading=18,
         textColor=colors.HexColor('#0F172A')
     )
-    story.append(Paragraph("<b>التحليل التفصيلي والتقييم:</b>", styles['Heading2']))
-    story.append(Spacer(1, 10))
+    
+    heading_style = ParagraphStyle(
+        'HeadingStyle',
+        parent=styles['Heading2'],
+        fontName=font_name,
+        fontSize=14,
+        textColor=colors.HexColor('#059669'),
+        spaceAfter=10
+    )
+
+    story.append(Paragraph("التحليل التفصيلي والتقييم:", heading_style))
+    story.append(Spacer(1, 5))
     story.append(Paragraph(analysis_text, body_style))
     
     doc.build(story)
@@ -603,7 +642,7 @@ else:
             st.rerun()
 
     # =========================================================
-    # 📦 لوحة الفحص الجماعي (Bulk Upload) الجديدة
+    # 📦 لوحة الفحص الجماعي (Bulk Upload)
     # =========================================================
     if st.session_state.current_page == "bulk":
         st.title("📦 نظام الفحص الجماعي للسير الذاتية (Bulk Upload)")
