@@ -743,6 +743,24 @@ else:
             
             output_bulk = BytesIO()
             with pd.ExcelWriter(output_bulk, engine='openpyxl') as writer:
+                import re
+
+
+def clean_illegal_chars(val):
+  if isinstance(val, str):
+    # إزالة أي رموز تحكم غير مسموح بها في XML/Excel
+    # السماح بالأحرف والأرقام وعلامات الترقيم والمسافات والأشهر/اللغات المختلفة (مثل العربية)
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', val)
+  return val
+
+
+# تطبيق التنظيف على جميع أعمدة الـ DataFrame النصية
+for col in df_bulk.columns:
+  if df_bulk[col].dtype == 'object':
+    df_bulk[col] = df_bulk[col].apply(clean_illegal_chars)
+
+# ثم قم بالتصدير كالمعتاد
+df_bulk.to_excel(writer, index=False, sheet_name='Bulk CV Analysis')
                 df_bulk.to_excel(writer, index=False, sheet_name='Bulk CV Analysis')
             excel_bulk_data = output_bulk.getvalue()
             
