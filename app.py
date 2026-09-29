@@ -19,8 +19,8 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
-from reportlab.pdftext.pdftoken import pdfmetrics
-from reportlab.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import arabic_reshaper
 from bidi.algorithm import get_display
 
@@ -239,7 +239,7 @@ if 'current_coins' not in st.session_state:
 if 'selected_admin_account' not in st.session_state:
     st.session_state.selected_admin_account = None
 
-# استرجاع الجلسة من الرابط إذا وجدت (تم التصحيح باستخدام st.query_params)
+# استرجاع الجلسة من الرابط إذا وجدت
 if not st.session_state.logged_in and "user" in st.query_params:
     saved_user = st.query_params["user"]
     conn = get_db_connection()
