@@ -12,5 +12,3 @@ extra-streamlit-components
 reportlab
 arabic-reshaper
 python-bidi
-pypdf
-requirements.txt
