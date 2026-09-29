@@ -13,9 +13,9 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. إعدادات الصفحة والثيم الـ UI/UX الحديث (Figma SaaS Style) ---
+# --- 1. إعدادات الصفحة والتصميم ---
 st.set_page_config(
-    page_title="CV ATS Pro - Dr. Fawzy",
+    page_title="CV ATS Professional Analyzer - Dr. Fawzy",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -23,71 +23,35 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;900&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
     html, body, [class*="css"] {
-        font-family: 'Tajawal', 'Plus Jakarta Sans', sans-serif !important;
-        background-color: #FAFAFC;
-        color: #0F172A;
+        font-family: 'Tajawal', sans-serif !important;
+        background-color: #F8FAFC;
     }
+    .stApp { background-color: #F8FAFC; }
     
-    .stApp { 
-        background-color: #FAFAFC;
-    }
-    
-    /* تخصيص القائمة الجانبية لتشبه لوحات تحكم Figma */
-    [data-testid="stSidebar"] {
-        background-color: #FFFFFF !important;
-        border-right: 1px solid #E2E8F0;
-        box-shadow: 2px 0 15px rgba(0, 0, 0, 0.02);
-    }
-    
-    /* الأزرار العصرية بنظام SaaS Modern */
     .stButton>button {
-        background: #0F172A !important;
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
-        font-size: 16px !important;
-        font-weight: 700 !important;
-        border-radius: 10px !important;
-        padding: 10px 20px !important;
+        font-size: 20px !important;
+        font-weight: 800 !important;
+        border-radius: 12px !important;
+        padding: 12px 24px !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
-        transition: all 0.2s ease-in-out !important;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
         width: 100% !important;
     }
-    .stButton>button:hover {
-        background: #1E293B !important;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25) !important;
-    }
     
-    /* كارد التقارير والنتائج بستايل UI احترافي */
     .report-card {
-        background: #FFFFFF;
-        border-radius: 14px;
-        padding: 24px;
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 20px;
         border: 1px solid #E2E8F0;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
-        font-size: 15px !important;
-        font-weight: 600 !important;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        font-size: 18px !important;
+        font-weight: 700 !important;
         line-height: 1.8 !important;
-        color: #334155 !important;
-    }
-    
-    /* تخصيص الـ Inputs والـ Selectboxes */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input {
-        background-color: #FFFFFF !important;
         color: #0F172A !important;
-        border-radius: 10px !important;
-        border: 1px solid #CBD5E1 !important;
-        padding: 10px !important;
-    }
-    
-    /* عناوين رئيسية نظيفة ومميزة */
-    h1, h2, h3 {
-        color: #0F172A !important;
-        font-weight: 800 !important;
-        letter-spacing: -0.5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -237,7 +201,7 @@ if not st.session_state.logged_in and "user" in query_params:
         st.session_state.role = user[2]
         st.session_state.current_coins = user[3]
 
-# --- 6. الوظائف المساعدة ---
+# --- 6. دمج الوظائف المساعدة واستخراج التخصص ---
 def login_user(email, password):
     email_clean = email.strip().lower()
     conn = get_db_connection()
@@ -303,9 +267,10 @@ def convert_pdf_to_images(uploaded_file):
         pass
     return images_bytes
 
+# --- دالة استخراج التخصص / المسمى الوظيفي الذكية ---
 def extract_job_title_with_ai(cv_text):
     prompt = f"""
-    قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية.
+    قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية (مثل: Software Engineer, Accountant, Graphic Designer, Sales Manager, Data Analyst, إلخ).
     أعد لي **فقط** المسمى الوظيفي أو التخصص في كلمة إلى ثلاث كلمات كحد أقصى، بدون أي مقدمات أو شرح أو علامات تنقيط.
     إذا لم تجد مسمى وظيفي واضح، اكتب: غير محدد.
     
@@ -330,7 +295,7 @@ def extract_job_title_with_ai(cv_text):
     return "غير محدد"
 
 def analyze_cv_with_ai(cv_text):
-    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
+    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
     try:
         if ai_model:
             response = ai_model.generate_content(prompt)
@@ -339,47 +304,44 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- دوال الرسم المتناسقة مع ستايل الـ Figma نظيف ---
+# --- دالة رسم الدائرة (مُعدّلة: إرجاع كلمة "ممتاز" للشروط الخاصة، وإلغاء أي كلمات في الحالة العادية مع الألوان المطلوبة) ---
 def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
-    ax.set_facecolor('#FFFFFF')
     
     if is_ats_cv:
-        primary_color = '#0D9488'
+        primary_color = '#10B981'  # أخضر لـ ممتاز
         status_text = "ممتاز"
     else:
-        primary_color = '#D97706' if score >= 50 else '#DC2626'
-        status_text = ""
+        primary_color = '#D97706' if score >= 50 else '#DC2626'  # برتقالي أو أحمر
+        status_text = ""  # بدون أي كلمات نهائياً
     
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
-           wedgeprops=dict(width=0.22, edgecolor='#FFFFFF', linewidth=3))
+           wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
     
     if is_ats_cv:
-        ax.text(0, 0.12, f"{score}%", fontsize=26, fontweight='bold', ha='center', va='center', color='#0F172A')
-        ax.text(0, -0.15, status_text, fontsize=13, fontweight='bold', ha='center', va='center', color=primary_color)
+        ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
+        ax.text(0, -0.15, status_text, fontsize=14, fontweight='bold', ha='center', va='center', color=primary_color)
     else:
-        ax.text(0, 0.0, f"{score}%", fontsize=30, fontweight='bold', ha='center', va='center', color='#0F172A')
+        # إذا لم تكن هناك كلمة، نرفع النسبة قليلاً لتتوسط الدائرة بشكل جمالي
+        ax.text(0, 0.0, f"{score}%", fontsize=32, fontweight='bold', ha='center', va='center', color='#0F172A')
         
-    ax.text(0, -0.38, "ATS MATCH SCORE", fontsize=9, fontweight='bold', ha='center', va='center', color='#64748B')
+    ax.text(0, -0.38, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
     ax.axis('equal')
     plt.tight_layout()
     return fig
 
+# --- دالة رسم الأعمدة (مُعدّلة: إلغاء اللون الأخضر واستبداله بالبرتقالي/الأحمر) ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
-    ax.set_facecolor('#FFFFFF')
-    
     categories_ar = ["الكلمات المفتاحية", "الخبرات والمهام", "المهارات الفنية", "التنسيق والقالب", "التوافق العام"]
     y_pos = np.arange(len(categories_ar))
-    bars = ax.barh(y_pos, cat_scores, color='#0F172A', height=0.4)
-    
+    bars = ax.barh(y_pos, cat_scores, color='#D97706', height=0.45)
     for bar, s in zip(bars, cat_scores):
-        bar.set_color('#0D9488' if s >= 75 else ('#D97706' if s >= 50 else '#DC2626'))
-        
+        bar.set_color('#D97706' if s >= 50 else '#DC2626')
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(categories_ar, fontsize=10, fontweight='bold', color='#334155')
+    ax.set_yticklabels(categories_ar, fontsize=11, fontweight='bold', color='#1E293B')
     ax.set_xlim(0, 115)
     for spine in ['top', 'right', 'bottom', 'left']:
         ax.spines[spine].set_visible(False)
@@ -394,8 +356,8 @@ def render_category_bars(cat_scores):
 if not st.session_state.logged_in:
     _, col_center, _ = st.columns([0.5, 3, 0.5])
     with col_center:
-        st.markdown("<br><h1 style='text-align: center; color: #0F172A; font-size: 38px; font-weight: 900;'>⚡ CV ATS Workspace</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #64748B; font-weight: 600; font-size: 16px;'>منصة احترافية متقدمة • تحت إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
+        st.markdown("<br><h1 style='text-align: center; color: #059669; font-size: 44px; font-weight: 800;'>📄 CV ATS Analyzer</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #475569; font-weight: 800; font-size: 20px;'>إشراف د. فوزي علي</p><br>", unsafe_allow_html=True)
         
         tab_login, tab_google, tab_signup = st.tabs(["🔑 تسجيل دخول", "🌐 دخول بـ Google", "📝 حساب جديد"])
         
@@ -467,10 +429,12 @@ else:
     current_coins = fetch_user_coins(st.session_state.user_email)
     st.session_state.current_coins = current_coins
     
+    # --- القائمة الجانبية (Sidebar) ---
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
-        st.metric(label="🪙 رصيد الكوينز", value=f"{current_coins}")
-        st.metric(label="📄 الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
+        
+        st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
+        st.metric(label="📄 عدد الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
         
         if st.session_state.role == 'admin':
             st.divider()
@@ -486,7 +450,7 @@ else:
         st.divider()
         st.subheader("💳 شحن رصيد")
         whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
-        st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#0F172A; color:white; font-weight:700; padding:10px; border-radius:8px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#25D366; color:white; font-weight:800; padding:12px; border-radius:8px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
 
         st.divider()
         if st.button("🚪 تسجيل الخروج", key="btn_logout"):
@@ -499,17 +463,20 @@ else:
             st.rerun()
 
     # =========================================================
-    # 🔴 لوحة إدارة النظام
+    # 🔴 الصفحة الأولى: لوحة إدارة النظام
     # =========================================================
     if st.session_state.current_page == "admin" and st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
-        st.write("إدارة المستخدمين والطلبات والكوينز بستايل متطور:")
+        st.write("مرحباً بك في لوحة التحكم، اختر من التبويبات التالية لإدارة النظام بشكل منفصل:")
         st.markdown("<br>", unsafe_allow_html=True)
 
-        tab_pending_page, tab_active_page = st.tabs(["⏳ الطلبات المعلقة", "🟢 الحسابات والكوينز"])
+        tab_pending_page, tab_active_page = st.tabs(["⏳ إدارة الطلبات المعلقة", "🟢 إدارة الحسابات والكوينز"])
 
         with tab_pending_page:
             st.subheader("📋 طلبات التسجيل بانتظار الموافقة")
+            st.caption("هنا تظهر الحسابات الجديدة التي تنتظر تفعيلك لها:")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             all_users = get_all_users()
             pending_users = [u for u in all_users if u[2] == 0]
             
@@ -519,17 +486,21 @@ else:
                         col_info, col_action = st.columns([3, 1])
                         with col_info:
                             st.markdown(f"##### 👤 البريد: `{email}`")
+                            st.caption("الحالة: ⏳ قيد الانتظار")
                         with col_action:
-                            if st.button("✅ قبول وتفعيل", key=f"page_app_{email}"):
+                            if st.button("✅ قبول الحساب والتفعيل", key=f"page_app_{email}"):
                                 approve_user_db(email)
-                                st.success(f"تم تفعيل {email}")
+                                st.success(f"تم قبول وتفعيل حساب {email} بنجاح!")
                                 st.rerun()
                         st.divider()
             else:
-                st.info("🎉 لا توجد طلبات معلقة حالياً.")
+                st.info("🎉 لا توجد أي طلبات تسجيل معلقة حالياً.")
 
         with tab_active_page:
-            st.subheader("⚙️ تعديل أرصدة الكوينز للمستخدمين")
+            st.subheader("⚙️ الحسابات المفعلة للتحكم في الكوينز")
+            st.caption("يمكنك تعديل رصيد الكوينز المتاح لكل مستخدم مباشرة:")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
             all_users = get_all_users()
             active_users = [u for u in all_users if u[2] == 1]
             
@@ -540,37 +511,39 @@ else:
                         with col_u_email:
                             st.markdown(f"##### 👤 `{email}`")
                         with col_u_coins:
-                            st.markdown(f"🪙 **{coins} كوين**")
+                            st.markdown(f"🪙 الرصيد الحالي: **{coins} كوين**")
                         with col_u_input:
                             new_c = st.number_input("الرصيد الجديد:", value=coins, step=20, key=f"p_num_{email}")
                         with col_u_btn:
                             st.markdown("<br>", unsafe_allow_html=True)
-                            if st.button("حفظ", key=f"p_btn_{email}"):
+                            if st.button("حفظ التعديل", key=f"p_btn_{email}"):
                                 update_user_coins(email, new_c)
-                                st.success("تم التحديث")
+                                st.success(f"تم تعديل رصيد {email} إلى {new_c} كوين.")
                                 st.rerun()
                         st.divider()
+            else:
+                st.info("لا يوجد مستخدمون نشطون حالياً.")
 
     # =========================================================
-    # 🟢 واجهة فحص وتحليل الـ CV الرئيسية
+    # 🟢 الصفحة الثانية: واجهة فحص وتحليل الـ CV (الصفحة الرئيسية)
     # =========================================================
     else:
-        st.title("📄 نظام فحص السير الذاتية • ATS Dashboard")
+        st.title("📄 نظام فحص وتحليل الـ CV")
         
         uploaded_file = st.file_uploader("قم برفع ملف السيرة الذاتية (PDF)", type=["pdf"])
 
         if uploaded_file is not None:
             if st.button("🚀 بدء تحليل السيرة الذاتية الآن", type="primary"):
                 if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
-                    st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن الكوينز.")
+                    st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
                 else:
                     if st.session_state.role != 'admin':
                         new_balance = current_coins - COINS_PER_CV
                         update_user_coins(st.session_state.user_email, new_balance)
                         remaining_scans = new_balance // COINS_PER_CV
-                        st.toast(f"🪙 تم خصم {COINS_PER_CV} كوين بنجاح! المتبقي: {new_balance}", icon="🎉")
+                        st.toast(f"🪙 تم خصم {COINS_PER_CV} كوين بنجاح! الرصيد المتبقي: {new_balance} كوين ({remaining_scans} فحص)", icon="🎉")
                     
-                    with st.spinner("🔍 جاري فحص الـ CV وتحليله باستخدام الذكاء الاصطناعي..."):
+                    with st.spinner("🔍 جاري فحص وتحليل السيرة الذاتية..."):
                         extracted_text = ""
                         try:
                             uploaded_file.seek(0)
@@ -589,6 +562,7 @@ else:
                             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
                             name = lines[0] if lines else "غير محدد"
                             
+                            # --- استخراج التخصص ديناميكياً ---
                             job_title = extract_job_title_with_ai(extracted_text)
                             
                             email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
@@ -597,17 +571,19 @@ else:
                             phone_m = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}', extracted_text)
                             phone = phone_m.group(0).strip() if phone_m else "غير مذكور"
                             
+                            # --- التحقق من اسم الملف للحالة الأولى أو الثانية ---
                             file_name_lower = uploaded_file.name.lower()
                             is_ats_cv = "ats cv" in file_name_lower or "ats_cv" in file_name_lower or "ats.cv" in file_name_lower
                             
                             if is_ats_cv:
-                                score = np.random.randint(90, 100)
+                                score = np.random.randint(90, 100)  # بين 90% و 99%
                             else:
-                                score = np.random.randint(50, 76)
+                                score = np.random.randint(50, 76)   # بين 50% و 75% بحد أقصى
 
                             ai_analysis = analyze_cv_with_ai(extracted_text)
                             cat_scores = [score - 3, score + 2, score - 5, score - 7, score]
 
+                            # تسجيل البيانات في Google Sheet
                             append_to_google_sheet_silent(
                                 name, job_title, email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
                             )
@@ -625,11 +601,12 @@ else:
                             }
                             st.rerun()
 
+        # --- عرض نتائج التحليل إن وجدت ---
         if st.session_state.last_analysis:
             res = st.session_state.last_analysis
-            rem_scans = current_coins // COINS_PER_CV if st.session_state.role != 'admin' else "غير محدود"
             
-            st.info(f"💡 رصيدك الحالي: **{current_coins} كوين** (متبقي لديك **{rem_scans}** عملية فحص).")
+            rem_scans = current_coins // COINS_PER_CV if st.session_state.role != 'admin' else "غير محدود"
+            st.info(f"💡 **تنبيه الرصيد:** رصيدك الحالي الآن هو **{current_coins} كوين** (متبقي لديك **{rem_scans}** عملية فحص أخرى).")
             st.divider()
 
             col_pdf, col_stats = st.columns([1.1, 1])
