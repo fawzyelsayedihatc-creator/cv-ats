@@ -21,15 +21,98 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# CSS المحدث لتجميل القائمة الجانبية والأزرار
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+    
     html, body, [class*="css"] {
         font-family: 'Tajawal', sans-serif !important;
         background-color: #F8FAFC;
     }
     .stApp { background-color: #F8FAFC; }
+
+    /* --- 🌿 تنسيق القائمة الجانبية (Sidebar) --- */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #064E3B 0%, #047857 50%, #059669 100%) !important;
+        padding-top: 1rem;
+    }
     
+    /* النصوص والتحكم في العناوين داخل السايدبار */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] h4, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] span, 
+    [data-testid="stSidebar"] label {
+        color: #FFFFFF !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stMetricValue"] {
+        color: #FACC15 !important; /* لون ذهبي مميز للرصيد */
+        font-weight: 800 !important;
+        font-size: 28px !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stMetricLabel"] {
+        color: #E2E8F0 !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+    }
+
+    /* --- 🔘 تنسيق جميع أزرار القائمة الجانبية (تدرج أخضر/أبيض، أزرار بيضاء بخط أسود) --- */
+    [data-testid="stSidebar"] .stButton > button {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        font-size: 17px !important;
+        font-weight: 800 !important;
+        border-radius: 10px !important;
+        padding: 12px 15px !important;
+        border: 1px solid #E2E8F0 !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+        width: 100% !important;
+        display: block !important;
+        margin-bottom: 8px !important;
+        transition: all 0.3s ease-in-out !important;
+        text-align: center !important;
+    }
+
+    /* تأثير الهوفر والتفاعل للأزرار */
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background-color: #F1F5F9 !important;
+        color: #047857 !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2) !important;
+        border-color: #10B981 !important;
+    }
+
+    /* زر الشحن الخاص بالواتساب */
+    .whatsapp-btn {
+        display: block !important;
+        text-align: center !important;
+        background: #FFFFFF !important;
+        color: #15803D !important;
+        font-size: 17px !important;
+        font-weight: 800 !important;
+        padding: 12px 15px !important;
+        border-radius: 10px !important;
+        text-decoration: none !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid #E2E8F0 !important;
+        transition: all 0.3s ease-in-out !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .whatsapp-btn:hover {
+        background-color: #F1F5F9 !important;
+        color: #166534 !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    /* أزرار الصفحات الرئيسية */
     .stButton>button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
@@ -41,7 +124,8 @@ st.markdown("""
         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
         width: 100% !important;
     }
-    
+
+    /* تقارير وكروت النتائج */
     .report-card {
         background-color: #FFFFFF;
         border-radius: 12px;
@@ -170,7 +254,6 @@ def init_db():
         )
     """)
     
-    # التأكد من التوافق مع الأعمدة المضافة حديثاً
     cursor.execute("PRAGMA table_info(users)")
     columns = [column[1] for column in cursor.fetchall()]
     if 'is_active' not in columns:
@@ -220,7 +303,6 @@ if 'bulk_analysis' not in st.session_state:
 if 'current_coins' not in st.session_state:
     st.session_state.current_coins = 0
 
-# الاسترجاع والتثبيت التلقائي لصفحة التنقل عبر URL query params
 if "page" in query_params:
     st.session_state.current_page = query_params["page"]
 elif 'current_page' not in st.session_state:
@@ -348,7 +430,6 @@ def convert_pdf_to_images(uploaded_file):
         pass
     return images_bytes
 
-# --- دالة استخراج التخصص / المسمى الوظيفي الذكية ---
 def extract_job_title_with_ai(cv_text):
     prompt = f"""
     قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية (مثل: Software Engineer, Accountant, Graphic Designer, Sales Manager, Data Analyst, إلخ).
@@ -385,16 +466,15 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- دالة رسم الدائرة ---
 def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
     
     if is_ats_cv:
-        primary_color = '#10B981'  # أخضر لـ ممتاز
+        primary_color = '#10B981'
         status_text = "ممتاز"
     else:
-        primary_color = '#D97706' if score >= 50 else '#DC2626'  # برتقالي أو أحمر
+        primary_color = '#D97706' if score >= 50 else '#DC2626'
         status_text = ""
     
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
@@ -411,7 +491,6 @@ def render_score_circle(score, is_ats_cv=False):
     plt.tight_layout()
     return fig
 
-# --- دالة رسم الأعمدة ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
@@ -432,7 +511,6 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
-# --- دالة معالجة سيرة ذاتية واحدة ---
 def process_single_cv(file, user_email, visitor_ip):
     extracted_text = ""
     try:
@@ -574,10 +652,9 @@ else:
         st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
         st.metric(label="📄 عدد الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
         
-        st.divider()
-        st.subheader("📌 أزرار التنقل والفحص")
+        st.markdown("<hr style='border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("#### 📌 أزرار التنقل والفحص")
         
-        # أزرار تنقل مستقلة بدون توقف مع الـ Refresh
         if st.button("📄 فحص سيرة ذاتية (فردي)", key="nav_single"):
             set_page("single_scan")
             
@@ -585,8 +662,8 @@ else:
             set_page("bulk_scan")
 
         if st.session_state.role == 'admin':
-            st.divider()
-            st.subheader("👑 لوحة تحكم الأدمن")
+            st.markdown("<hr style='border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;'>", unsafe_allow_html=True)
+            st.markdown("#### 👑 لوحة تحكم الأدمن")
             if st.button("📊 تقارير وسجل النشاط", key="nav_logs"):
                 set_page("activity_logs")
                 
@@ -596,12 +673,12 @@ else:
             if st.button("⚙️ لوحة إدارة الحسابات", key="nav_admin"):
                 set_page("admin_panel")
 
-        st.divider()
-        st.subheader("💳 شحن رصيد")
+        st.markdown("<hr style='border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("#### 💳 شحن رصيد")
         whatsapp_url = f"https://wa.me/{WHATSAPP_NUMBER}?text=أهلاً%20دكتور%20فوزي،%20أريد%20شراء%20كوينز%20للحساب%20{st.session_state.user_email}"
-        st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="display:block; text-align:center; background:#25D366; color:white; font-weight:800; padding:12px; border-radius:8px; text-decoration:none;">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
+        st.markdown(f'<a href="{whatsapp_url}" target="_blank" class="whatsapp-btn">💬 شحن الكوينز واتساب</a>', unsafe_allow_html=True)
 
-        st.divider()
+        st.markdown("<hr style='border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;'>", unsafe_allow_html=True)
         if st.button("🚪 تسجيل الخروج", key="btn_logout"):
             st.session_state.logged_in = False
             st.session_state.user_email = ""
@@ -624,7 +701,7 @@ else:
         if uploaded_file is not None:
             if st.button("🚀 بدء تحليل السيرة الذاتية الآن", type="primary", key="btn_run_single"):
                 if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
-                    st.error("⚠️️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
+                    st.error("⚠ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
                 else:
                     if st.session_state.role != 'admin':
                         new_balance = current_coins - COINS_PER_CV
@@ -760,24 +837,53 @@ else:
     # 📊 3. تقارير وسجل نشاط الحسابات (Audit & Activity Logs)
     # =========================================================
     elif current_p == "activity_logs" and st.session_state.role == 'admin':
-        st.title("📊 تحليل البيانات وتقرير النشاط الكامل لكل حساب")
+        st.title("📊 تقارير البيانات والنشاط التفصيلي لكل حساب")
+        st.caption("عرض تقرير تحليلي مستقل وملخص تنفيذي لكل حساب على حدة:")
         
         all_users = get_all_users()
         user_list = [u[0] for u in all_users]
         
-        selected_user = st.selectbox("اختر الحساب لعرض تقريره والتغيرات الخاصة به:", ["الكل"] + user_list)
-        
-        if selected_user == "الكل":
-            logs = get_user_logs()
-        else:
-            logs = get_user_logs(selected_user)
-            
+        selected_user = st.selectbox("🎯 اختر الحساب لفلترة التقرير (أو اختر 'عرض كل الحسابات'):", ["عرض كل الحسابات بشكل منفصل"] + user_list)
         st.markdown("<br>", unsafe_allow_html=True)
-        if logs:
-            df_logs = pd.DataFrame(logs, columns=["التاريخ والوقت", "البريد الإلكتروني", "نوع الحركة", "تغير الكوينز", "التفاصيل"])
-            st.dataframe(df_logs, use_container_width=True)
-        else:
-            st.info("لا توجد سجلات حركة لهذا الحساب حتى الآن.")
+
+        target_users = user_list if selected_user == "عرض كل الحسابات بشكل منفصل" else [selected_user]
+
+        for user_email in target_users:
+            u_info = fetch_user_info(user_email)
+            if not u_info:
+                continue
+            
+            coins_bal = u_info[1]
+            is_act = "🟢 مفعل" if u_info[3] == 1 else "🔴 معطل"
+            
+            user_logs = get_user_logs(user_email)
+            
+            total_scans = sum(1 for log in user_logs if log[2] == "فحص CV")
+            coins_spent = abs(sum(log[3] for log in user_logs if log[3] < 0))
+            
+            with st.container():
+                st.markdown(f"""
+                <div style="background-color: #FFFFFF; padding: 18px; border-radius: 12px; border: 1px solid #CBD5E1; margin-bottom: 10px;">
+                    <h3 style="color: #0F172A; margin-bottom: 10px;">👤 تقرير الحساب: <span style="color: #059669;">{user_email}</span></h3>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col_c1, col_c2, col_c3, col_c4 = st.columns(4)
+                col_c1.metric("🪙 الرصيد الحالي", f"{coins_bal} كوين")
+                col_c2.metric("📄 إجمالي الفحوصات", f"{total_scans} عمليات")
+                col_c3.metric("📉 الكوينز المستهلكة", f"{coins_spent} كوين")
+                col_c4.metric("⚡ حالة الحساب", is_act)
+                
+                st.markdown("<h5 style='color: #475569; margin-top: 15px;'>📑 سجل العمليات والتغييرات الخاصة بالحساب:</h5>", unsafe_allow_html=True)
+                
+                if user_logs:
+                    df_u_logs = pd.DataFrame(user_logs, columns=["التاريخ والوقت", "البريد الإلكتروني", "نوع الحركة", "تغير الكوينز", "التفاصيل"])
+                    df_u_logs_clean = df_u_logs[["التاريخ والوقت", "نوع الحركة", "تغير الكوينز", "التفاصيل"]]
+                    st.dataframe(df_u_logs_clean, use_container_width=True)
+                else:
+                    st.info(f"لا توجد عمليات مسجلة حتى الآن للحساب `{user_email}`.")
+                
+                st.markdown("<hr style='border: 1px dashed #CBD5E1; margin-top: 25px; margin-bottom: 25px;'>", unsafe_allow_html=True)
 
     # =========================================================
     # ⏳ 4. إدارة الطلبات المعلقة (Pending Requests)
