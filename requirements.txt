@@ -9,3 +9,13 @@ pypdfium2
 gspread
 oauth2client
 extra-streamlit-components
+streamlit
+pdfplumber
+pandas
+numpy
+matplotlib
+google-generativeai
+gspread
+oauth2client
+openpyxl
+reportlab
