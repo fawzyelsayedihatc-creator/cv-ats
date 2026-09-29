@@ -201,34 +201,624 @@ def get_user_logs(email):
     return logs
 
 # --- 5. حماية الجلسات وتثبيتها ---
+
 if 'logged_in' not in st.session_state:
+
     st.session_state.logged_in = False
+
 if 'user_email' not in st.session_state:
+
     st.session_state.user_email = ""
+
 if 'role' not in st.session_state:
+
     st.session_state.role = "user"
+
 if 'last_analysis' not in st.session_state:
+
     st.session_state.last_analysis = None
+
+if 'bulk_results' not in st.session_state:
+
+    st.session_state.bulk_results = None
+
 if 'current_coins' not in st.session_state:
+
     st.session_state.current_coins = 0
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = "main"
+
 if 'selected_admin_account' not in st.session_state:
+
     st.session_state.selected_admin_account = None
 
-query_params = st.query_params
+
+
+# استرجاع الجلسة من الرابط إذا وجدت
+
 if not st.session_state.logged_in and "user" in query_params:
+
     saved_user = query_params["user"]
+
     conn = get_db_connection()
+
     cursor = conn.cursor()
+
     cursor.execute("SELECT email, is_approved, role, coins FROM users WHERE email = ?", (saved_user,))
+
     user = cursor.fetchone()
+
     conn.close()
+
     if user and (user[1] == 1 or user[2] == 'admin'):
+
         st.session_state.logged_in = True
+
         st.session_state.user_email = user[0]
+
         st.session_state.role = user[2]
+
         st.session_state.current_coins = user[3]
+
+
+
+# --- 6. وظائف مساعدة وتحميل خط عربي آمن ---
+
+def login_user(email, password):
+
+    email_clean = email.strip().lower()
+
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT email, password, coins, is_approved, role FROM users WHERE email = ?", (email_clean,))
+
+    user = cursor.fetchone()
+
+    conn.close()
+
+    if user and user[1] == password.strip():
+
+        return True, user
+
+    return False, None
+
+
+
+def register_user(email, password, is_google=False):
+
+    email_clean = email.strip().lower()
+
+    if not email_clean:
+
+        return False, "يرجى كتابة البريد بشكل صحيح."
+
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    try:
+
+        cursor.execute("INSERT INTO users (email, password, coins, is_approved, role) VALUES (?, ?, ?, 0, 'user')",
+
+                       (email_clean, 'google_oauth' if is_google else password.strip(), INITIAL_FREE_COINS))
+
+        conn.commit()
+
+        conn.close()
+
+        log_user_activity(email_clean, "تسجيل حساب", 0, "تم إنشاء الحساب وبانتظار الموافقة")
+
+        return True, "تم تقديم طلب التسجيل بنجاح! يتطلب الحساب موافقة د. فوزي قبل التفعيل."
+
+    except sqlite3.IntegrityError:
+
+        conn.close()
+
+        return False, "هذا البريد مسجل لدينا بالفعل!"
+
+
+
+def update_user_coins(email, new_coins, admin_email, reason):
+
+    email_clean = email.strip().lower()
+
+    old_coins = fetch_user_coins(email_clean)
+
+    diff = new_coins - old_coins
+
+    
+
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE users SET coins = ? WHERE email = ?", (new_coins, email_clean))
+
+    conn.commit()
+
+    conn.close()
+
+    
+
+    if diff != 0:
+
+        log_user_activity(email_clean, "شحن / تعديل رصيد", diff, f"بواسطة الأدمن {admin_email} - السبب: {reason}")
+
+    
+
+    if email_clean == st.session_state.user_email.lower():
+
+        st.session_state.current_coins = new_coins
+
+
+
+def approve_user_db(email):
+
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE users SET is_approved = 1 WHERE email = ?", (email.strip().lower(),))
+
+    conn.commit()
+
+    conn.close()
+
+    log_user_activity(email, "تفعيل الحساب", 0, "تم الموافقة على تفعيل الحساب من قبل الأدمن")
+
+
+
+def suspend_user_db(email):
+
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE users SET is_approved = 0 WHERE email = ?", (email.strip().lower(),))
+
+    conn.commit()
+
+    conn.close()
+
+    log_user_activity(email, "إيقاف الحساب", 0, "تم إيقاف وتعطيل الحساب من قبل الأدمن")
+
+
+
+def get_all_users():
+
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT email, coins, is_approved, role FROM users WHERE role != 'admin'")
+
+    users = cursor.fetchall()
+
+    conn.close()
+
+    return users
+
+
+
+def convert_pdf_to_images(uploaded_file):
+
+    images_bytes = []
+
+    try:
+
+        uploaded_file.seek(0)
+
+        with pdfplumber.open(uploaded_file) as pdf:
+
+            for page in pdf.pages[:3]:
+
+                pil_image = page.to_image(resolution=150).original
+
+                buf = BytesIO()
+
+                pil_image.save(buf, format="PNG")
+
+                images_bytes.append(buf.getvalue())
+
+    except Exception:
+
+        pass
+
+    return images_bytes
+
+
+
+def extract_job_title_with_ai(cv_text):
+
+    prompt = f"""
+
+    قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية.
+
+    أعد لي **فقط** المسمى الوظيفي أو التخصص في كلمة إلى ثلاث كلمات كحد أقصى، بدون أي مقدمات.
+
+    إذا لم تجد مسمى وظيفي واضح، اكتب: غير محدد.
+
+    
+
+    نص السيرة الذاتية:
+
+    {cv_text[:2000]}
+
+    """
+
+    try:
+
+        if ai_model:
+
+            response = ai_model.generate_content(prompt)
+
+            title = response.text.strip().replace("\n", "")
+
+            if title and len(title) < 50:
+
+                return title
+
+    except Exception:
+
+        pass
+
+    return "غير محدد"
+
+
+
+def analyze_cv_with_ai(cv_text):
+
+    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
+
+    try:
+
+        if ai_model:
+
+            response = ai_model.generate_content(prompt)
+
+            return response.text
+
+    except Exception:
+
+        pass
+
+    return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
+
+
+
+def generate_pdf_report(res):
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+
+    story = []
+
+    
+
+    font_path = "Tajawal.ttf"
+
+    if not os.path.exists(font_path):
+
+        try:
+
+            url = "https://github.com/google/fonts/raw/main/ofl/tajawal/Tajawal-Regular.ttf"
+
+            urllib.request.urlretrieve(url, font_path)
+
+        except Exception:
+
+            pass
+
+
+
+    if os.path.exists(font_path):
+
+        try:
+
+            pdfmetrics.registerFont(TTFont('Tajawal', font_path))
+
+            font_name = 'Tajawal'
+
+        except Exception:
+
+            font_name = 'Helvetica'
+
+    else:
+
+        font_name = 'Helvetica'
+
+
+
+    styles = getSampleStyleSheet()
+
+    
+
+    title_style = ParagraphStyle(
+
+        'TitleStyle',
+
+        parent=styles['Heading1'],
+
+        fontName=font_name,
+
+        fontSize=20,
+
+        textColor=colors.HexColor('#059669'),
+
+        alignment=1,
+
+        spaceAfter=15
+
+    )
+
+    
+
+    subtitle_style = ParagraphStyle(
+
+        'SubTitleStyle',
+
+        parent=styles['Normal'],
+
+        fontName=font_name,
+
+        fontSize=12,
+
+        textColor=colors.HexColor('#475569'),
+
+        alignment=1,
+
+        spaceAfter=25
+
+    )
+
+
+
+    cell_style = ParagraphStyle(
+
+        'CellStyle',
+
+        parent=styles['Normal'],
+
+        fontName=font_name,
+
+        fontSize=11,
+
+        textColor=colors.HexColor('#0F172A'),
+
+        alignment=2
+
+    )
+
+    
+
+    name_fixed = fix_arabic(f"الاسم: {res['name']}")
+
+    job_fixed = fix_arabic(f"التخصص: {res['job_title']}")
+
+    email_fixed = fix_arabic(f"البريد: {res['email']}")
+
+    phone_fixed = fix_arabic(f"الهاتف: {res['phone']}")
+
+    score_fixed = fix_arabic(f"درجة توافق الـ ATS: {res['score']}%")
+
+    date_fixed = fix_arabic(f"تاريخ التقرير: {datetime.datetime.now().strftime('%Y-%m-%d')}")
+
+    
+
+    header_data = [
+
+        [Paragraph(job_fixed, cell_style), Paragraph(name_fixed, cell_style)],
+
+        [Paragraph(phone_fixed, cell_style), Paragraph(email_fixed, cell_style)],
+
+        [Paragraph(date_fixed, cell_style), Paragraph(score_fixed, cell_style)]
+
+    ]
+
+    
+
+    t = Table(header_data, colWidths=[260, 260])
+
+    t.setStyle(TableStyle([
+
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F1F5F9')),
+
+        ('PADDING', (0,0), (-1,-1), 10),
+
+        ('ROUNDEDCORNERS', [4, 4, 4, 4]),
+
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+
+    ]))
+
+    
+
+    doc_title = fix_arabic("تقرير فحص وتحليل السيرة الذاتية")
+
+    doc_subtitle = fix_arabic("مؤسسة د. فوزي علي للاستشراف التعليمي والمهني")
+
+    
+
+    story.append(Paragraph(doc_title, title_style))
+
+    story.append(Paragraph(doc_subtitle, subtitle_style))
+
+    story.append(t)
+
+    story.append(Spacer(1, 20))
+
+    
+
+    clean_analysis = res['ai_analysis'].replace('**', '').replace('__', '')
+
+    analysis_lines = clean_analysis.split('\n')
+
+    processed_lines = [fix_arabic(line) for line in analysis_lines]
+
+    analysis_text = '<br/>'.join(processed_lines)
+
+    
+
+    body_style = ParagraphStyle(
+
+        'BodyStyle',
+
+        parent=styles['Normal'],
+
+        fontName=font_name,
+
+        fontSize=11,
+
+        leading=18,
+
+        textColor=colors.HexColor('#0F172A'),
+
+        alignment=2
+
+    )
+
+    
+
+    heading_text = fix_arabic("التحليل التفصيلي والتقييم:")
+
+    heading_style = ParagraphStyle(
+
+        'HeadingStyle',
+
+        parent=styles['Heading2'],
+
+        fontName=font_name,
+
+        fontSize=14,
+
+        textColor=colors.HexColor('#059669'),
+
+        spaceAfter=10,
+
+        alignment=2
+
+    )
+
+
+
+    story.append(Paragraph(heading_text, heading_style))
+
+    story.append(Spacer(1, 5))
+
+    story.append(Paragraph(analysis_text, body_style))
+
+    
+
+    doc.build(story)
+
+    buffer.seek(0)
+
+    return buffer.getvalue()
+
+
+
+def render_score_circle(score, is_ats_cv=False):
+
+    plt.style.use('default')
+
+    fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
+
+    primary_color = '#10B981' if is_ats_cv else ('#D97706' if score >= 50 else '#DC2626')
+
+    ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
+
+           wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
+
+    ax.text(0, 0.0, f"{score}%", fontsize=32, fontweight='bold', ha='center', va='center', color='#0F172A')
+
+    ax.text(0, -0.38, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
+
+    ax.axis('equal')
+
+    plt.tight_layout()
+
+    return fig
+
+
+
+def render_account_bar_chart(df_logs, email):
+
+    plt.style.use('default')
+
+    fig, ax = plt.subplots(figsize=(7, 3.5), facecolor='#FFFFFF')
+
+    if df_logs.empty:
+
+        ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
+
+    else:
+
+        df_logs['date'] = pd.to_datetime(df_logs['الوقت']).dt.date
+
+        daily_usage = df_logs[df_logs['تغير الكوينز'] < 0].groupby('date')['تغير الكوينز'].sum().abs().reset_index()
+
+        if daily_usage.empty:
+
+            ax.text(0.5, 0.5, "لا توجد عمليات استهلاك كوينز مسجلة", ha='center', va='center', fontsize=12, fontweight='bold')
+
+        else:
+
+            dates = [str(d) for d in daily_usage['date']]
+
+            vals = daily_usage['تغير الكوينز'].values
+
+            ax.bar(dates, vals, color='#059669', width=0.4)
+
+            ax.set_ylabel("الكوينز المستهلكة", fontsize=10, fontweight='bold', color='#1E293B')
+
+            ax.set_title(f"استهلاك الكوينز اليومي للحساب: {email}", fontsize=12, fontweight='bold', color='#0F172A')
+
+            for spine in ['top', 'right']:
+
+                ax.spines[spine].set_visible(False)
+
+    plt.tight_layout()
+
+    return fig
+
+
+
+def render_account_line_chart(df_logs, email):
+
+    plt.style.use('default')
+
+    fig, ax = plt.subplots(figsize=(7, 3.5), facecolor='#FFFFFF')
+
+    if df_logs.empty:
+
+        ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
+
+    else:
+
+        df_logs['date'] = pd.to_datetime(df_logs['الوقت']).dt.date
+
+        daily_activity = df_logs.groupby('date').size().reset_index(name='count')
+
+        dates = [str(d) for d in daily_activity['date']]
+
+        counts = daily_activity['count'].values
+
+        ax.plot(dates, counts, color='#D97706', marker='o', linewidth=2.5, markersize=8)
+
+        ax.set_ylabel("عدد العمليات", fontsize=10, fontweight='bold', color='#1E293B')
+
+        ax.set_title(f"رسم بياني لنقاط نشاطات الحساب عبر الأيام: {email}", fontsize=12, fontweight='bold', color='#0F172A')
+
+        for spine in ['top', 'right']:
+
+            ax.spines[spine].set_visible(False)
+
+    plt.tight_layout()
+
+    return fig
+
+r[3]
 
 # --- 6. الوظائف المساعدة ---
 def login_user(email, password):
