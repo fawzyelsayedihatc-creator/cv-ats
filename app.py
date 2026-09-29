@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS المحدث لتجميل القائمة الجانبية والأزرار
+# CSS المحدث لتوضيح الخط داخل الأزرار
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
@@ -61,12 +61,9 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* --- 🔘 تنسيق جميع أزرار القائمة الجانبية (تدرج أخضر/أبيض، أزرار بيضاء بخط أسود) --- */
+    /* --- 🔘 إجبار الكتابة داخل الأزرار على الظهور باللون الأسود وبحجم كبير --- */
     [data-testid="stSidebar"] .stButton > button {
-        background: #FFFFFF !important;
-        color: #0F172A !important;
-        font-size: 17px !important;
-        font-weight: 800 !important;
+        background-color: #FFFFFF !important;
         border-radius: 10px !important;
         padding: 12px 15px !important;
         border: 1px solid #E2E8F0 !important;
@@ -78,13 +75,25 @@ st.markdown("""
         text-align: center !important;
     }
 
-    /* تأثير الهوفر والتفاعل للأزرار */
+    [data-testid="stSidebar"] .stButton > button *,
+    [data-testid="stSidebar"] .stButton > button p,
+    [data-testid="stSidebar"] .stButton > button span {
+        color: #000000 !important;
+        font-size: 18px !important;
+        font-weight: 800 !important;
+        -webkit-text-fill-color: #000000 !important;
+    }
+
+    /* تأثير الهوفر للأزرار */
     [data-testid="stSidebar"] .stButton > button:hover {
         background-color: #F1F5F9 !important;
-        color: #047857 !important;
         transform: translateY(-2px) !important;
         box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2) !important;
-        border-color: #10B981 !important;
+    }
+
+    [data-testid="stSidebar"] .stButton > button:hover * {
+        color: #047857 !important;
+        -webkit-text-fill-color: #047857 !important;
     }
 
     /* زر الشحن الخاص بالواتساب */
@@ -93,7 +102,7 @@ st.markdown("""
         text-align: center !important;
         background: #FFFFFF !important;
         color: #15803D !important;
-        font-size: 17px !important;
+        font-size: 18px !important;
         font-weight: 800 !important;
         padding: 12px 15px !important;
         border-radius: 10px !important;
