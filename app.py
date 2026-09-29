@@ -201,7 +201,7 @@ if not st.session_state.logged_in and "user" in query_params:
         st.session_state.role = user[2]
         st.session_state.current_coins = user[3]
 
-# --- 6. دمج الوظائف المساعدة واستخراج التخصص ---
+# --- 6. الوظائف المساعدة ---
 def login_user(email, password):
     email_clean = email.strip().lower()
     conn = get_db_connection()
@@ -267,11 +267,10 @@ def convert_pdf_to_images(uploaded_file):
         pass
     return images_bytes
 
-# --- دالة استخراج التخصص / المسمى الوظيفي الذكية ---
 def extract_job_title_with_ai(cv_text):
     prompt = f"""
-    قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية (مثل: Software Engineer, Accountant, Graphic Designer, Sales Manager, Data Analyst, إلخ).
-    أعد لي **فقط** المسمى الوظيفي أو التخصص في كلمة إلى ثلاث كلمات كحد أقصى، بدون أي مقدمات أو شرح أو علامات تنقيط.
+    قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية.
+    أعد لي **فقط** المسمى الوظيفي أو التخصص في كلمة إلى ثلاث كلمات كحد أقصى، بدون أي مقدمات.
     إذا لم تجد مسمى وظيفي واضح، اكتب: غير محدد.
     
     نص السيرة الذاتية:
@@ -285,17 +284,10 @@ def extract_job_title_with_ai(cv_text):
                 return title
     except Exception:
         pass
-    
-    lines = [line.strip() for line in cv_text.split('\n') if line.strip()]
-    if len(lines) > 1:
-        possible_title = lines[1]
-        if len(possible_title) < 40 and not re.search(r'@|\d{5,}', possible_title):
-            return possible_title
-            
     return "غير محدد"
 
 def analyze_cv_with_ai(cv_text):
-    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
+    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
     try:
         if ai_model:
             response = ai_model.generate_content(prompt)
@@ -304,34 +296,27 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- دالة رسم الدائرة (مُعدّلة: إرجاع كلمة "ممتاز" للشروط الخاصة، وإلغاء أي كلمات في الحالة العادية مع الألوان المطلوبة) ---
 def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
-    
     if is_ats_cv:
-        primary_color = '#10B981'  # أخضر لـ ممتاز
+        primary_color = '#10B981'
         status_text = "ممتاز"
     else:
-        primary_color = '#D97706' if score >= 50 else '#DC2626'  # برتقالي أو أحمر
-        status_text = ""  # بدون أي كلمات نهائياً
-    
+        primary_color = '#D97706' if score >= 50 else '#DC2626'
+        status_text = ""
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
            wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
-    
     if is_ats_cv:
         ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
         ax.text(0, -0.15, status_text, fontsize=14, fontweight='bold', ha='center', va='center', color=primary_color)
     else:
-        # إذا لم تكن هناك كلمة، نرفع النسبة قليلاً لتتوسط الدائرة بشكل جمالي
         ax.text(0, 0.0, f"{score}%", fontsize=32, fontweight='bold', ha='center', va='center', color='#0F172A')
-        
     ax.text(0, -0.38, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
     ax.axis('equal')
     plt.tight_layout()
     return fig
 
-# --- دالة رسم الأعمدة (مُعدّلة: إلغاء اللون الأخضر واستبداله بالبرتقالي/الأحمر) ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
@@ -423,7 +408,7 @@ if not st.session_state.logged_in:
                     else:
                         st.error(msg)
 
-# --- 8. الشاشة الرئيسية والتنقل بعد الدخول ---
+# --- 8. الشاشة الرئيسية والأزرار المنفصلة في القائمة الجانبية ---
 else:
     visitor_ip = get_user_ip()
     current_coins = fetch_user_coins(st.session_state.user_email)
@@ -436,16 +421,17 @@ else:
         st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
         st.metric(label="📄 عدد الفحوصات المتاحة", value=f"{current_coins // COINS_PER_CV}")
         
+        st.divider()
+        
+        # --- الأزرار المنفصلة المطلوبة تماماً ---
+        if st.button("⬅️ زر فحص السيرة الذاتية (CV)", key="btn_side_main"):
+            st.session_state.current_page = "main"
+            st.rerun()
+
         if st.session_state.role == 'admin':
-            st.divider()
-            if st.session_state.current_page == "main":
-                if st.button("👑 لوحة إدارة النظام", key="btn_go_admin"):
-                    st.session_state.current_page = "admin"
-                    st.rerun()
-            else:
-                if st.button("⬅️ العودة لفحص الـ CV", key="btn_go_main"):
-                    st.session_state.current_page = "main"
-                    st.rerun()
+            if st.button("👑 لوحة إدارة النظام", key="btn_side_admin"):
+                st.session_state.current_page = "admin"
+                st.rerun()
 
         st.divider()
         st.subheader("💳 شحن رصيد")
@@ -463,14 +449,18 @@ else:
             st.rerun()
 
     # =========================================================
-    # 🔴 الصفحة الأولى: لوحة إدارة النظام
+    # 🔴 لوحة إدارة النظام (تحتوي على التبويبات + تحليل بيانات الاستخدام لكل أكونت)
     # =========================================================
     if st.session_state.current_page == "admin" and st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
-        st.write("مرحباً بك في لوحة التحكم، اختر من التبويبات التالية لإدارة النظام بشكل منفصل:")
+        st.write("مرحباً بك في لوحة التحكم، يمكنك إدارة النظام والطلبات وتحليل الاستخدامات لكل حساب من التبويبات التالية:")
         st.markdown("<br>", unsafe_allow_html=True)
 
-        tab_pending_page, tab_active_page = st.tabs(["⏳ إدارة الطلبات المعلقة", "🟢 إدارة الحسابات والكوينز"])
+        tab_pending_page, tab_active_page, tab_charts_page = st.tabs([
+            "⏳ إدارة الطلبات المعلقة", 
+            "🟢 إدارة الحسابات والكوينز", 
+            "📊 تحليل الاستخدامات والرسوم البيانية"
+        ])
 
         with tab_pending_page:
             st.subheader("📋 طلبات التسجيل بانتظار الموافقة")
@@ -524,8 +514,37 @@ else:
             else:
                 st.info("لا يوجد مستخدمون نشطون حالياً.")
 
+        with tab_charts_page:
+            st.subheader("📊 تحليل بيانات الاستخدام والرسوم البيانية لكل أكونت")
+            st.caption("إحصائيات شاملة ومقارنات رسومية لاستخدامات الحسابات والكوينز في النظام:")
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            all_users = get_all_users()
+            if all_users:
+                df_users = pd.DataFrame(all_users, columns=["البريد الإلكتروني", "الكوينز", "الحالة", "الدور"])
+                
+                # عرض رسم بياني للأعمدة يوضح رصيد الكوينز لكل مستخدم
+                fig_u, ax_u = plt.subplots(figsize=(8, 4.5), facecolor='#FFFFFF')
+                emails = [e.split('@')[0] for e in df_users["البريد الإلكتروني"]]
+                coin_vals = df_users["الكوينز"].values
+                
+                bars = ax_u.bar(emails, coin_vals, color='#059669', width=0.5)
+                ax_u.set_ylabel("رصيد الكوينز", fontsize=11, fontweight='bold', color='#1E293B')
+                ax_u.set_title("تحليل أرصدة الكوينز لكل حساب", fontsize=14, fontweight='bold', color='#0F172A')
+                plt.xticks(rotation=15, fontweight='bold')
+                
+                for spine in ['top', 'right']:
+                    ax_u.spines[spine].set_visible(False)
+                    
+                st.pyplot(fig_u)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.dataframe(df_users, use_container_width=True)
+            else:
+                st.info("لا توجد بيانات كافية لعرض التحليلات حالياً.")
+
     # =========================================================
-    # 🟢 الصفحة الثانية: واجهة فحص وتحليل الـ CV (الصفحة الرئيسية)
+    # 🟢 شاشة فحص وتحليل الـ CV (الصفحة الرئيسية)
     # =========================================================
     else:
         st.title("📄 نظام فحص وتحليل الـ CV")
@@ -562,7 +581,6 @@ else:
                             lines = [line.strip() for line in extracted_text.split('\n') if line.strip()]
                             name = lines[0] if lines else "غير محدد"
                             
-                            # --- استخراج التخصص ديناميكياً ---
                             job_title = extract_job_title_with_ai(extracted_text)
                             
                             email_m = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', extracted_text)
@@ -571,19 +589,17 @@ else:
                             phone_m = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}', extracted_text)
                             phone = phone_m.group(0).strip() if phone_m else "غير مذكور"
                             
-                            # --- التحقق من اسم الملف للحالة الأولى أو الثانية ---
                             file_name_lower = uploaded_file.name.lower()
                             is_ats_cv = "ats cv" in file_name_lower or "ats_cv" in file_name_lower or "ats.cv" in file_name_lower
                             
                             if is_ats_cv:
-                                score = np.random.randint(90, 100)  # بين 90% و 99%
+                                score = np.random.randint(90, 100)
                             else:
-                                score = np.random.randint(50, 76)   # بين 50% و 75% بحد أقصى
+                                score = np.random.randint(50, 76)
 
                             ai_analysis = analyze_cv_with_ai(extracted_text)
                             cat_scores = [score - 3, score + 2, score - 5, score - 7, score]
 
-                            # تسجيل البيانات في Google Sheet
                             append_to_google_sheet_silent(
                                 name, job_title, email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
                             )
@@ -601,7 +617,6 @@ else:
                             }
                             st.rerun()
 
-        # --- عرض نتائج التحليل إن وجدت ---
         if st.session_state.last_analysis:
             res = st.session_state.last_analysis
             
