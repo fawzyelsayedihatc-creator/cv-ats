@@ -362,7 +362,6 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# دالة توليد تقرير PDF احترافي مع معالجة النصوص العربية تماماً
 def generate_pdf_report(res):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
@@ -491,39 +490,19 @@ def render_score_circle(score, is_ats_cv=False):
     plt.tight_layout()
     return fig
 
-def render_category_bars(cat_scores):
-    plt.style.use('default')
-    fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
-    categories_ar = ["الكلمات المفتاحية", "الخبرات والمهام", "المهارات الفنية", "التنسيق والقالب", "التوافق العام"]
-    y_pos = np.arange(len(categories_ar))
-    bars = ax.barh(y_pos, cat_scores, color='#D97706', height=0.45)
-    for bar, s in zip(bars, cat_scores):
-        bar.set_color('#D97706' if s >= 50 else '#DC2626')
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(categories_ar, fontsize=11, fontweight='bold', color='#1E293B')
-    ax.set_xlim(0, 115)
-    for spine in ['top', 'right', 'bottom', 'left']:
-        ax.spines[spine].set_visible(False)
-    ax.xaxis.set_visible(False)
-    for bar in bars:
-        w = bar.get_width()
-        ax.text(w + 2, bar.get_y() + bar.get_height()/2, f'{int(w)}%', va='center', fontsize=10, fontweight='bold', color='#0F172A')
-    plt.tight_layout()
-    return fig
-
 def render_account_bar_chart(df_logs, email):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(7, 3.5), facecolor='#FFFFFF')
     if df_logs.empty:
         ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
     else:
-        df_logs['date'] = pd.to_datetime(df_logs['timestamp']).dt.date
-        daily_usage = df_logs[df_logs['coins_change'] < 0].groupby('date')['coins_change'].sum().abs().reset_index()
+        df_logs['date'] = pd.to_datetime(df_logs['الوقت']).dt.date
+        daily_usage = df_logs[df_logs['تغير الكوينز'] < 0].groupby('date')['تغير الكوينز'].sum().abs().reset_index()
         if daily_usage.empty:
             ax.text(0.5, 0.5, "لا توجد عمليات استهلاك كوينز مسجلة", ha='center', va='center', fontsize=12, fontweight='bold')
         else:
             dates = [str(d) for d in daily_usage['date']]
-            vals = daily_usage['coins_change'].values
+            vals = daily_usage['تغير الكوينز'].values
             ax.bar(dates, vals, color='#059669', width=0.4)
             ax.set_ylabel("الكوينز المستهلكة", fontsize=10, fontweight='bold', color='#1E293B')
             ax.set_title(f"استهلاك الكوينز اليومي للحساب: {email}", fontsize=12, fontweight='bold', color='#0F172A')
@@ -538,7 +517,7 @@ def render_account_line_chart(df_logs, email):
     if df_logs.empty:
         ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
     else:
-        df_logs['date'] = pd.to_datetime(df_logs['timestamp']).dt.date
+        df_logs['date'] = pd.to_datetime(df_logs['الوقت']).dt.date
         daily_activity = df_logs.groupby('date').size().reset_index(name='count')
         dates = [str(d) for d in daily_activity['date']]
         counts = daily_activity['count'].values
