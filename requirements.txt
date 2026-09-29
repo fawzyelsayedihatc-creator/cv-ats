@@ -13,3 +13,4 @@ reportlab
 arabic-reshaper
 python-bidi
 pypdf
+requirements.txt
