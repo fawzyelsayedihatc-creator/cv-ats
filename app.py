@@ -238,12 +238,12 @@ if 'bulk_results' not in st.session_state:
     st.session_state.bulk_results = None
 if 'current_coins' not in st.session_state:
     st.session_state.current_coins = 0
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = "main"
 if 'selected_admin_account' not in st.session_state:
     st.session_state.selected_admin_account = None
 
 query_params = st.query_params
+
+# استرجاع الجلسة من الرابط إذا وجت
 if not st.session_state.logged_in and "user" in query_params:
     saved_user = query_params["user"]
     conn = get_db_connection()
@@ -256,6 +256,20 @@ if not st.session_state.logged_in and "user" in query_params:
         st.session_state.user_email = user[0]
         st.session_state.role = user[2]
         st.session_state.current_coins = user[3]
+
+# مزامنة الصفحة الحالية مع الرابط (URL Query Parameters) للحفاظ عليها عند الـ Refresh والـ Back
+if "page" in query_params:
+    st.session_state.current_page = query_params["page"]
+else:
+    if 'current_page' not in st.session_state:
+        st.session_state.current_page = "main"
+
+def switch_page(page_name):
+    st.session_state.current_page = page_name
+    st.query_params["page"] = page_name
+    if st.session_state.user_email:
+        st.query_params["user"] = st.session_state.user_email
+    st.rerun()
 
 # --- 6. وظائف مساعدة وتحميل خط عربي آمن ---
 def login_user(email, password):
@@ -563,11 +577,9 @@ if not st.session_state.logged_in:
                             st.session_state.user_email = email
                             st.session_state.role = role
                             st.session_state.current_coins = coins
-                            st.session_state.current_page = "main"
-                            st.session_state.selected_admin_account = None
                             st.query_params["user"] = email
                             log_user_activity(email, "تسجيل دخول", 0, "تم تسجيل الدخول بنجاح")
-                            st.rerun()
+                            switch_page("main")
                     else:
                         st.error("بيانات الدخول غير صحيحة!")
 
@@ -594,11 +606,9 @@ if not st.session_state.logged_in:
                             st.session_state.user_email = g_clean
                             st.session_state.role = user[2]
                             st.session_state.current_coins = user[3]
-                            st.session_state.current_page = "main"
-                            st.session_state.selected_admin_account = None
                             st.query_params["user"] = g_clean
                             log_user_activity(g_clean, "تسجيل دخول Google", 0, "تم تسجيل الدخول بنجاح عبر جوجل")
-                            st.rerun()
+                            switch_page("main")
 
         with tab_signup:
             st.markdown("<br>", unsafe_allow_html=True)
@@ -628,20 +638,14 @@ else:
         st.divider()
         
         if st.button("📄 فحص فردي للـ CV", key="btn_side_main"):
-            st.session_state.current_page = "main"
-            st.session_state.selected_admin_account = None
-            st.rerun()
+            switch_page("main")
 
         if st.button("📦 الفحص الجماعي (Bulk Upload)", key="btn_side_bulk"):
-            st.session_state.current_page = "bulk"
-            st.session_state.selected_admin_account = None
-            st.rerun()
+            switch_page("bulk")
 
         if st.session_state.role == 'admin':
             if st.button("👑 لوحة إدارة النظام", key="btn_side_admin"):
-                st.session_state.current_page = "admin"
-                st.session_state.selected_admin_account = None
-                st.rerun()
+                switch_page("admin")
 
         st.divider()
         st.subheader("💳 شحن رصيد")
@@ -723,7 +727,6 @@ else:
                         
                         df_bulk = pd.DataFrame(bulk_data_list)
                         
-                        # --- تنظيف الأحرف غير المسموح بها لتجنب خطأ openpyxl ---
                         for col in df_bulk.columns:
                             if df_bulk[col].dtype == 'object':
                                 df_bulk[col] = df_bulk[col].apply(clean_illegal_chars)
@@ -777,7 +780,6 @@ else:
                 
                 with col_b:
                     st.markdown("<br>", unsafe_allow_html=True)
-                    # زر تفعيل الحساب وزر إيقاف الحساب جنباً إلى جنب
                     col_btn1, col_btn2 = st.columns(2)
                     with col_btn1:
                         if st.button("✅ تفعيل الحساب"):
