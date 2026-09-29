@@ -22,12 +22,11 @@ import urllib.request
 import arabic_reshaper
 from bidi.algorithm import get_display
 
-# --- دالة لمعالجة النصوص العربية لظهر سليمة وليست مقلوبة ---
+# --- دالة لمعالجة النصوص العربية لتظهر سليمة وليست مقلوبة ---
 def fix_arabic(text):
     if not text:
         return ""
     try:
-        # التصحيح هنا: استخدام الرموز الصحيحة للغة العربية دون أي أخطاء في الـ syntax
         if any('\u0600' <= c <= '\u06ff' for c in str(text)):
             reshaped_text = arabic_reshaper.reshape(str(text))
             return get_display(reshaped_text)
