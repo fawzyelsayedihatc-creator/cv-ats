@@ -33,10 +33,10 @@ st.markdown("""
     .stButton>button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
-        font-size: 20px !important;
+        font-size: 18px !important;
         font-weight: 800 !important;
         border-radius: 12px !important;
-        padding: 12px 24px !important;
+        padding: 10px 20px !important;
         border: none !important;
         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
         width: 100% !important;
@@ -139,10 +139,9 @@ def append_to_google_sheet_silent(name, job_title, email, phone, score, user_ema
         sheet.append_row(row)
         return True
     except Exception as e:
-        st.error(f"خطأ في إضافة البيانات للشيت: {e}")
         return False
 
-# --- 4. قاعدة البيانات المحلية ---
+# --- 4. قاعدة البيانات المحلية وسجلات النشاط لكل أكونت ---
 def get_db_connection():
     return sqlite3.connect("web_database.db", timeout=20)
 
@@ -158,12 +157,32 @@ def init_db():
             role TEXT DEFAULT 'user'
         )
     """)
+    # جدول لتسجيل العمليات (استهلاك الكوينز، فحص سير ذاتية، شحن...) لكل أكونت
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT,
+            action_type TEXT,
+            coins_change INTEGER,
+            details TEXT,
+            timestamp TEXT
+        )
+    """)
     cursor.execute("INSERT OR REPLACE INTO users (email, password, coins, is_approved, role) VALUES ('fawzi ali', '112003112003', 99999, 1, 'admin')")
     cursor.execute("INSERT OR REPLACE INTO users (email, password, coins, is_approved, role) VALUES ('fawziali2040@gmail.com', 'google_oauth', 99999, 1, 'admin')")
     conn.commit()
     conn.close()
 
 init_db()
+
+def log_user_activity(email, action_type, coins_change, details):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("INSERT INTO user_activity_logs (email, action_type, coins_change, details, timestamp) VALUES (?, ?, ?, ?, ?)",
+                   (email.strip().lower(), action_type, coins_change, details, now_str))
+    conn.commit()
+    conn.close()
 
 def fetch_user_coins(email):
     conn = get_db_connection()
@@ -172,6 +191,14 @@ def fetch_user_coins(email):
     res = cursor.fetchone()
     conn.close()
     return res[0] if res else 0
+
+def get_user_logs(email):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT action_type, coins_change, details, timestamp FROM user_activity_logs WHERE email = ? ORDER BY timestamp DESC", (email.strip().lower(),))
+    logs = cursor.fetchall()
+    conn.close()
+    return logs
 
 # --- 5. حماية الجلسات وتثبيتها ---
 if 'logged_in' not in st.session_state:
@@ -186,6 +213,8 @@ if 'current_coins' not in st.session_state:
     st.session_state.current_coins = 0
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "main"
+if 'selected_admin_account' not in st.session_state:
+    st.session_state.selected_admin_account = None
 
 query_params = st.query_params
 if not st.session_state.logged_in and "user" in query_params:
@@ -224,19 +253,28 @@ def register_user(email, password, is_google=False):
                        (email_clean, 'google_oauth' if is_google else password.strip(), INITIAL_FREE_COINS))
         conn.commit()
         conn.close()
+        log_user_activity(email_clean, "تسجيل حساب", 0, "تم إنشاء الحساب وبانتظار الموافقة")
         return True, "تم تقديم طلب التسجيل بنجاح! يتطلب الحساب موافقة د. فوزي قبل التفعيل."
     except sqlite3.IntegrityError:
         conn.close()
         return False, "هذا البريد مسجل لدينا بالفعل!"
 
-def update_user_coins(email, new_coins):
+def update_user_coins(email, new_coins, admin_email, reason):
     email_clean = email.strip().lower()
+    old_coins = fetch_user_coins(email_clean)
+    diff = new_coins - old_coins
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET coins = ? WHERE email = ?", (new_coins, email_clean))
     conn.commit()
     conn.close()
-    st.session_state.current_coins = new_coins
+    
+    if diff != 0:
+        log_user_activity(email_clean, "شحن / تعديل رصيد", diff, f"بواسطة الأدمن {admin_email} - السبب: {reason}")
+    
+    if email_clean == st.session_state.user_email.lower():
+        st.session_state.current_coins = new_coins
 
 def approve_user_db(email):
     conn = get_db_connection()
@@ -244,6 +282,7 @@ def approve_user_db(email):
     cursor.execute("UPDATE users SET is_approved = 1 WHERE email = ?", (email.strip().lower(),))
     conn.commit()
     conn.close()
+    log_user_activity(email, "تفعيل الحساب", 0, "تم الموافقة على تفعيل الحساب من قبل الأدمن")
 
 def get_all_users():
     conn = get_db_connection()
@@ -337,6 +376,55 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
+# دوال رسوم التحليلات المخصصة لكل حساب (أعمدة + خطي بنقاط متصلة)
+def render_account_bar_chart(df_logs, email):
+    plt.style.use('default')
+    fig, ax = plt.subplots(figsize=(7, 3.5), facecolor='#FFFFFF')
+    
+    if df_logs.empty:
+        ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
+    else:
+        # تجميع الاستخدام حسب التاريخ
+        df_logs['date'] = pd.to_datetime(df_logs['timestamp']).dt.date
+        daily_usage = df_logs[df_logs['coins_change'] < 0].groupby('date')['coins_change'].sum().abs().reset_index()
+        
+        if daily_usage.empty:
+            ax.text(0.5, 0.5, "لا توجد عمليات استهلاك كوينز مسجلة", ha='center', va='center', fontsize=12, fontweight='bold')
+        else:
+            dates = [str(d) for d in daily_usage['date']]
+            vals = daily_usage['coins_change'].values
+            ax.bar(dates, vals, color='#059669', width=0.4)
+            ax.set_ylabel("الكوينز المستهلكة", fontsize=10, fontweight='bold', color='#1E293B')
+            ax.set_title(f"استهلاك الكوينز اليومي للحساب: {email}", fontsize=12, fontweight='bold', color='#0F172A')
+            for spine in ['top', 'right']:
+                ax.spines[spine].set_visible(False)
+                
+    plt.tight_layout()
+    return fig
+
+def render_account_line_chart(df_logs, email):
+    plt.style.use('default')
+    fig, ax = plt.subplots(figsize=(7, 3.5), facecolor='#FFFFFF')
+    
+    if df_logs.empty:
+        ax.text(0.5, 0.5, "لا توجد نشاطات مسجلة بعد", ha='center', va='center', fontsize=12, fontweight='bold')
+    else:
+        df_logs['date'] = pd.to_datetime(df_logs['timestamp']).dt.date
+        daily_activity = df_logs.groupby('date').size().reset_index(name='count')
+        
+        dates = [str(d) for d in daily_activity['date']]
+        counts = daily_activity['count'].values
+        
+        # رسم خطي مع نقاط متصلة
+        ax.plot(dates, counts, color='#D97706', marker='o', linewidth=2.5, markersize=8)
+        ax.set_ylabel("عدد العمليات", fontsize=10, fontweight='bold', color='#1E293B')
+        ax.set_title(f"رسم بياني لنقاط نشاطات الحساب عبر الأيام: {email}", fontsize=12, fontweight='bold', color='#0F172A')
+        for spine in ['top', 'right']:
+            ax.spines[spine].set_visible(False)
+            
+    plt.tight_layout()
+    return fig
+
 # --- 7. صفحة الدخول والتسجيل ---
 if not st.session_state.logged_in:
     _, col_center, _ = st.columns([0.5, 3, 0.5])
@@ -364,7 +452,9 @@ if not st.session_state.logged_in:
                             st.session_state.role = role
                             st.session_state.current_coins = coins
                             st.session_state.current_page = "main"
+                            st.session_state.selected_admin_account = None
                             st.query_params["user"] = email
+                            log_user_activity(email, "تسجيل دخول", 0, "تم تسجيل الدخول بنجاح")
                             st.rerun()
                     else:
                         st.error("بيانات الدخول غير صحيحة!")
@@ -393,7 +483,9 @@ if not st.session_state.logged_in:
                             st.session_state.role = user[2]
                             st.session_state.current_coins = user[3]
                             st.session_state.current_page = "main"
+                            st.session_state.selected_admin_account = None
                             st.query_params["user"] = g_clean
+                            log_user_activity(g_clean, "تسجيل دخول Google", 0, "تم تسجيل الدخول بنجاح عبر جوجل")
                             st.rerun()
 
         with tab_signup:
@@ -408,7 +500,7 @@ if not st.session_state.logged_in:
                     else:
                         st.error(msg)
 
-# --- 8. الشاشة الرئيسية والأزرار المنفصلة في القائمة الجانبية ---
+# --- 8. الشاشة الرئيسية والتحكم ---
 else:
     visitor_ip = get_user_ip()
     current_coins = fetch_user_coins(st.session_state.user_email)
@@ -423,14 +515,16 @@ else:
         
         st.divider()
         
-        # --- الأزرار المنفصلة المطلوبة تماماً ---
-        if st.button("⬅️ زر فحص السيرة الذاتية (CV)", key="btn_side_main"):
+        # الأزرار المنفصلة في القائمة الجانبية
+        if st.button("⬅️️ فحص السيرة الذاتية (CV)", key="btn_side_main"):
             st.session_state.current_page = "main"
+            st.session_state.selected_admin_account = None
             st.rerun()
 
         if st.session_state.role == 'admin':
             if st.button("👑 لوحة إدارة النظام", key="btn_side_admin"):
                 st.session_state.current_page = "admin"
+                st.session_state.selected_admin_account = None
                 st.rerun()
 
         st.divider()
@@ -440,108 +534,133 @@ else:
 
         st.divider()
         if st.button("🚪 تسجيل الخروج", key="btn_logout"):
+            log_user_activity(st.session_state.user_email, "تسجيل خروج", 0, "تم تسجيل الخروج")
             st.session_state.logged_in = False
             st.session_state.user_email = ""
             st.session_state.role = "user"
             st.session_state.last_analysis = None
             st.session_state.current_page = "main"
+            st.session_state.selected_admin_account = None
             st.query_params.clear()
             st.rerun()
 
     # =========================================================
-    # 🔴 لوحة إدارة النظام (تحتوي على التبويبات + تحليل بيانات الاستخدام لكل أكونت)
+    # 🔴 لوحة إدارة النظام (تحتوي على زر تحليل تحت كل أكونت على حدة)
     # =========================================================
     if st.session_state.current_page == "admin" and st.session_state.role == 'admin':
         st.title("👑 لوحة إدارة النظام - دكتور فوزي")
-        st.write("مرحباً بك في لوحة التحكم، يمكنك إدارة النظام والطلبات وتحليل الاستخدامات لكل حساب من التبويبات التالية:")
+        st.write("إدارة الحسابات، الطلبات المعلقة، وتحليل دقيق لكل حساب على حدة.")
         st.markdown("<br>", unsafe_allow_html=True)
 
-        tab_pending_page, tab_active_page, tab_charts_page = st.tabs([
-            "⏳ إدارة الطلبات المعلقة", 
-            "🟢 إدارة الحسابات والكوينز", 
-            "📊 تحليل الاستخدامات والرسوم البيانية"
-        ])
-
-        with tab_pending_page:
-            st.subheader("📋 طلبات التسجيل بانتظار الموافقة")
-            st.caption("هنا تظهر الحسابات الجديدة التي تنتظر تفعيلك لها:")
+        # إذا تم اختيار أكونت معين لعرض تحليلاته التفصيلية
+        if st.session_state.selected_admin_account:
+            sel_acc = st.session_state.selected_admin_account
+            if st.button("⬅️ العودة لقائمة الحسابات والطلبات"):
+                st.session_state.selected_admin_account = None
+                st.rerun()
+                
+            st.markdown(f"--- \n### 📊 التحليل التفصيلي للحساب: `{sel_acc}`")
+            
+            # جلب سجلات هذا الأكونت فقط
+            logs = get_user_logs(sel_acc)
+            df_logs = pd.DataFrame(logs, columns=["نوع العملية", "تغير الكوينز", "التفاصيل", "الوقت"])
+            
+            # حساب الإحصائيات المطلوبة بدقة لهذا الأكونت
+            today_str = datetime.datetime.now().strftime("%Y-%m-%d")
+            today_logs = df_logs[df_logs['الوقت'].str.startswith(today_str)] if not df_logs.empty else pd.DataFrame()
+            
+            used_today = abs(today_logs[today_logs['تغير الكوينز'] < 0]['تغير الكوينز'].sum()) if not today_logs.empty else 0
+            charged_total = df_logs[df_logs['تغير الكوينز'] > 0]['تغير الكوينز'].sum() if not df_logs.empty else 0
+            acc_coins = fetch_user_coins(sel_acc)
+            
+            col_m1, col_m2, col_m3 = st.columns(3)
+            with col_m1:
+                st.metric(label="🪙 استهلاك الكوينز اليوم", value=f"{used_today} كوين")
+            with col_m2:
+                st.metric(label="🔋 إجمالي الكوينز المشحونة", value=f"{charged_total} كوين")
+            with col_m3:
+                st.metric(label="💰 الرصيد الحالي للحساب", value=f"{acc_coins} كوين")
+                
             st.markdown("<br>", unsafe_allow_html=True)
             
-            all_users = get_all_users()
-            pending_users = [u for u in all_users if u[2] == 0]
-            
-            if pending_users:
-                for email, coins, approved, role in pending_users:
-                    with st.container():
-                        col_info, col_action = st.columns([3, 1])
-                        with col_info:
-                            st.markdown(f"##### 👤 البريد: `{email}`")
-                            st.caption("الحالة: ⏳ قيد الانتظار")
-                        with col_action:
-                            if st.button("✅ قبول الحساب والتفعيل", key=f"page_app_{email}"):
-                                approve_user_db(email)
-                                st.success(f"تم قبول وتفعيل حساب {email} بنجاح!")
-                                st.rerun()
-                        st.divider()
+            # عرض الرسم البياني للأعمدة ورسم النقاط المتصلة لهذا الأكونت فقط
+            col_chart1, col_chart2 = st.columns(2)
+            with col_chart1:
+                st.subheader("📈 رسم بياني: استهلاك الكوينز بالأعمدة")
+                fig_b = render_account_bar_chart(df_logs, sel_acc)
+                st.pyplot(fig_b)
+                
+            with col_chart2:
+                st.subheader("📉 رسم بياني: خط النشاط والنقاط المتصلة")
+                fig_l = render_account_line_chart(df_logs, sel_acc)
+                st.pyplot(fig_l)
+                
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader(f"📋 سجل العمليات التفصيلي بالكامل للحساب: {sel_acc}")
+            if not df_logs.empty:
+                st.dataframe(df_logs, use_container_width=True)
             else:
-                st.info("🎉 لا توجد أي طلبات تسجيل معلقة حالياً.")
+                st.info("لا توجد عمليات مسجلة لهذا الحساب حتى الآن.")
 
-        with tab_active_page:
-            st.subheader("⚙️ الحسابات المفعلة للتحكم في الكوينز")
-            st.caption("يمكنك تعديل رصيد الكوينز المتاح لكل مستخدم مباشرة:")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            all_users = get_all_users()
-            active_users = [u for u in all_users if u[2] == 1]
-            
-            if active_users:
-                for email, coins, approved, role in active_users:
-                    with st.container():
-                        col_u_email, col_u_coins, col_u_input, col_u_btn = st.columns([3, 2, 2, 2])
-                        with col_u_email:
-                            st.markdown(f"##### 👤 `{email}`")
-                        with col_u_coins:
-                            st.markdown(f"🪙 الرصيد الحالي: **{coins} كوين**")
-                        with col_u_input:
-                            new_c = st.number_input("الرصيد الجديد:", value=coins, step=20, key=f"p_num_{email}")
-                        with col_u_btn:
-                            st.markdown("<br>", unsafe_allow_html=True)
-                            if st.button("حفظ التعديل", key=f"p_btn_{email}"):
-                                update_user_coins(email, new_c)
-                                st.success(f"تم تعديل رصيد {email} إلى {new_c} كوين.")
-                                st.rerun()
-                        st.divider()
-            else:
-                st.info("لا يوجد مستخدمون نشطون حالياً.")
+        else:
+            tab_pending_page, tab_active_page = st.tabs([
+                "⏳ إدارة الطلبات المعلقة", 
+                "🟢 إدارة الحسابات والتحليلات الخاصة"
+            ])
 
-        with tab_charts_page:
-            st.subheader("📊 تحليل بيانات الاستخدام والرسوم البيانية لكل أكونت")
-            st.caption("إحصائيات شاملة ومقارنات رسومية لاستخدامات الحسابات والكوينز في النظام:")
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            all_users = get_all_users()
-            if all_users:
-                df_users = pd.DataFrame(all_users, columns=["البريد الإلكتروني", "الكوينز", "الحالة", "الدور"])
+            with tab_pending_page:
+                st.subheader("📋 طلبات التسجيل بانتظار الموافقة")
+                all_users = get_all_users()
+                pending_users = [u for u in all_users if u[2] == 0]
                 
-                # عرض رسم بياني للأعمدة يوضح رصيد الكوينز لكل مستخدم
-                fig_u, ax_u = plt.subplots(figsize=(8, 4.5), facecolor='#FFFFFF')
-                emails = [e.split('@')[0] for e in df_users["البريد الإلكتروني"]]
-                coin_vals = df_users["الكوينز"].values
-                
-                bars = ax_u.bar(emails, coin_vals, color='#059669', width=0.5)
-                ax_u.set_ylabel("رصيد الكوينز", fontsize=11, fontweight='bold', color='#1E293B')
-                ax_u.set_title("تحليل أرصدة الكوينز لكل حساب", fontsize=14, fontweight='bold', color='#0F172A')
-                plt.xticks(rotation=15, fontweight='bold')
-                
-                for spine in ['top', 'right']:
-                    ax_u.spines[spine].set_visible(False)
-                    
-                st.pyplot(fig_u)
-                
+                if pending_users:
+                    for email, coins, approved, role in pending_users:
+                        with st.container():
+                            col_info, col_action = st.columns([3, 1])
+                            with col_info:
+                                st.markdown(f"##### 👤 البريد: `{email}`")
+                                st.caption("الحالة: ⏳ قيد الانتظار")
+                            with col_action:
+                                if st.button("✅ قبول الحساب والتفعيل", key=f"page_app_{email}"):
+                                    approve_user_db(email)
+                                    st.success(f"تم قبول وتفعيل حساب {email} بنجاح!")
+                                    st.rerun()
+                            st.divider()
+                else:
+                    st.info("🎉 لا توجد أي طلبات تسجيل معلقة حالياً.")
+
+            with tab_active_page:
+                st.subheader("⚙️ الحسابات المفعلة - زر تحليل مستقل تحت كل أكونت")
+                st.caption("لكل حساب زر خاص به أدناه لعرض تحليلاته واستهلاكاته بالكامل:")
                 st.markdown("<br>", unsafe_allow_html=True)
-                st.dataframe(df_users, use_container_width=True)
-            else:
-                st.info("لا توجد بيانات كافية لعرض التحليلات حالياً.")
+                
+                all_users = get_all_users()
+                active_users = [u for u in all_users if u[2] == 1]
+                
+                if active_users:
+                    for email, coins, approved, role in active_users:
+                        with st.container():
+                            col_u_email, col_u_coins, col_u_input, col_u_btn, col_u_analytics = st.columns([2.5, 1.5, 1.5, 1.5, 2])
+                            with col_u_email:
+                                st.markdown(f"##### 👤 `{email}`")
+                            with col_u_coins:
+                                st.markdown(f"🪙 **{coins} كوين**")
+                            with col_u_input:
+                                new_c = st.number_input("الرصيد الجديد:", value=coins, step=20, key=f"p_num_{email}")
+                            with col_u_btn:
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("حفظ الرصيد", key=f"p_btn_{email}"):
+                                    update_user_coins(email, new_c, st.session_state.user_email, "تعديل بواسطة الأدمن")
+                                    st.success(f"تم تعديل الرصيد!")
+                                    st.rerun()
+                            with col_u_analytics:
+                                st.markdown("<br>", unsafe_allow_html=True)
+                                if st.button("📊 عرض تحليلات الأكاونت", key=f"ana_btn_{email}"):
+                                    st.session_state.selected_admin_account = email
+                                    st.rerun()
+                            st.divider()
+                else:
+                    st.info("لا يوجد مستخدمون نشطون حالياً.")
 
     # =========================================================
     # 🟢 شاشة فحص وتحليل الـ CV (الصفحة الرئيسية)
@@ -558,7 +677,7 @@ else:
                 else:
                     if st.session_state.role != 'admin':
                         new_balance = current_coins - COINS_PER_CV
-                        update_user_coins(st.session_state.user_email, new_balance)
+                        update_user_coins(st.session_state.user_email, new_balance, st.session_state.user_email, "استهلاك لفحص سيرة ذاتية")
                         remaining_scans = new_balance // COINS_PER_CV
                         st.toast(f"🪙 تم خصم {COINS_PER_CV} كوين بنجاح! الرصيد المتبقي: {new_balance} كوين ({remaining_scans} فحص)", icon="🎉")
                     
@@ -603,6 +722,8 @@ else:
                             append_to_google_sheet_silent(
                                 name, job_title, email, phone, score, st.session_state.user_email, visitor_ip, uploaded_file.name
                             )
+                            
+                            log_user_activity(st.session_state.user_email, "فحص سيرة ذاتية", -COINS_PER_CV, f"فحص ملف: {uploaded_file.name} - التخصص: {job_title} - النسبة: {score}%")
 
                             st.session_state.last_analysis = {
                                 'pdf_images': pdf_images,
