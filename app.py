@@ -13,7 +13,7 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# --- 1. إعدادات الصفحة والتصميم ---
+# --- 1. إعدادات الصفحة والتصميم (الثيم) ---
 st.set_page_config(
     page_title="CV ATS Professional Analyzer - Dr. Fawzy",
     page_icon="⚡",
@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS المحدث لتوضيح الخط داخل الأزرار
+# CSS المحدث للثيم بالكامل
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
@@ -191,7 +191,8 @@ JvvUuKwDUv0GrELlE75TbCyAOs987EbmzzzlShw9s83vx9Kg1wEQUrWzXPXJwSYe
 XEMIWtqLTwKBgQDOQr9UYw+5tNZAs4LZcA67ktQyRjVBGuWur2guiTq46UU0Q+pt
 siJG6q+2deP4MLvvO2SyXTQ3FlryAlbLTRa/rO4gNmJwrH+HpTzg03f7c6kS9xLd
 jMKTI5P/2wZUy3sk9hOkslDCNBVTYugvZ4j3eul5b+nCga21z3E3EU2JwQKBgGYM
-8dJHXCQr/UzJx7EJs4Yq3xRCEvsxR8EwttzdJ2198ts/QuF0+6z93IL3xKJ8Rmjn/yIuuRTJcQi0htHcmwvPtIa+OJ+fpvnE4+YY2OMc3WuBUSflcBIZowqTNghcwlwY
+8dJHXCQr/UzJx7EJs4Yq3xRCEvsxR8EwttzdJ2198ts/QuF0+6z93IL3xKJ8Rmjn
+/yIuuRTJcQi0htHcmwvPtIa+OJ+fpvnE4+YY2OMc3WuBUSflcBIZowqTNghcwlwY
 XorUBJL42wZtE7wI3VM4OJ97QjP2V1VmwFSb56+hAoGAJJoKgsBK5+Sw8ZDeCEGr
 D5EoboILVJK4kCkG6e2Ly7ofYsmphyzyIdlMv71rvduat43t6ECoaVn5tpluY2Z8
 1174dNSGpFemyTHW/UoFTfpSA1edKEO6NEWVgYBN5eDF/EeCMR2wg7UMW0ZxkjMI
@@ -466,7 +467,7 @@ def extract_job_title_with_ai(cv_text):
     return "غير محدد"
 
 def analyze_cv_with_ai(cv_text):
-    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
+    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
     try:
         if ai_model:
             response = ai_model.generate_content(prompt)
@@ -475,7 +476,7 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- 🎯 تعديل دالة رسم رسمة الدائرة والألوان بناءً على المطلوب ---
+# --- 🎯 رسم رسمة الدائرة للأدمن والمستخدمين ---
 def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
@@ -504,7 +505,7 @@ def render_score_circle(score, is_ats_cv=False):
     plt.tight_layout()
     return fig
 
-# --- 🎯 تعديل دالة رسم الأعمدة التخصصية لتتوافق مع الألوان الجديدة ---
+# --- 🎯 رسم الأعمدة التخصصية ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
@@ -532,7 +533,7 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
-# --- 🎯 تعديل حساب النسبة في دالة المعالجة ---
+# --- 🎯 دالة معالجة سيرة ذاتية واحدة ---
 def process_single_cv(file, user_email, visitor_ip):
     extracted_text = ""
     try:
@@ -563,15 +564,12 @@ def process_single_cv(file, user_email, visitor_ip):
     is_ats_cv = "ats cv" in file_name_lower or "ats_cv" in file_name_lower or "ats.cv" in file_name_lower
     
     if is_ats_cv:
-        # الكلمة المفتاحية موجودة: نسبة عالية جداً فوق الـ 90%
         score = np.random.randint(90, 100)
     else:
-        # السير العادية: جعل أغلبها أقل من 60% وبحد أقصى 75%
-        # احتمال 80% تكون أقل من 60 (أحمر) واحتمال 20% بين 60 و 75 (برتقالي)
         if np.random.rand() < 0.8:
-            score = np.random.randint(35, 60) # أحمر
+            score = np.random.randint(35, 60)
         else:
-            score = np.random.randint(60, 76) # برتقالي (الحد الأقصى 75)
+            score = np.random.randint(60, 76)
 
     ai_analysis = analyze_cv_with_ai(extracted_text)
     cat_scores = [
@@ -583,7 +581,12 @@ def process_single_cv(file, user_email, visitor_ip):
     ]
 
     append_to_google_sheet_silent(name, job_title, email, phone, score, user_email, visitor_ip, file.name)
-    log_activity(user_email, "فحص CV", -COINS_PER_CV, f"فحص الملف {file.name} - النتيجة {score}%")
+    
+    # خصم الكوينز للمستخدمين وتسجيل النشاط
+    if st.session_state.role != 'admin':
+        update_user_coins(user_email, max(0, st.session_state.current_coins - COINS_PER_CV), "نظام الفحص الفردي")
+    else:
+        log_activity(user_email, "فحص CV (أدمن)", 0, f"فحص الملف {file.name} - النتيجة {score}%")
 
     return {
         'pdf_images': pdf_images,
@@ -735,46 +738,164 @@ else:
         if uploaded_file is not None:
             if st.button("🚀 بدء تحليل السيرة الذاتية الآن", type="primary", key="btn_run_single"):
                 if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
-                    st.error("⚠ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
+                    st.error("❌ رصيدك الحالي غير كافٍ لفحص سيرة ذاتية. يرجى الشحن أولاً عبر الواتساب.")
                 else:
-                    if st.session_state.role != 'admin':
-                        new_balance = current_coins - COINS_PER_CV
-                        update_user_coins(st.session_state.user_email, new_balance, "فحص CV فردي")
-                        remaining_scans = new_balance // COINS_PER_CV
-                        st.toast(f"🪙 تم خصم {COINS_PER_CV} كوين بنجاح! الرصيد المتبقي: {new_balance} كوين ({remaining_scans} فحص)", icon="🎉")
-                    
-                    with st.spinner("🔍 جاري فحص وتحليل السيرة الذاتية..."):
-                        res_data, err = process_single_cv(uploaded_file, st.session_state.user_email, visitor_ip)
+                    with st.spinner("جاري التحليل واستخراج البيانات..."):
+                        res, err = process_single_cv(uploaded_file, st.session_state.user_email, visitor_ip)
                         if err:
-                            st.error(f"❌ {err}")
+                            st.error(err)
                         else:
-                            st.session_state.last_analysis = res_data
-                            st.rerun()
+                            st.session_state.last_analysis = res
+                            st.success("تم تحليل السيرة الذاتية بنجاح!")
 
+        # عرض النتائج المحفوظة للجلسة الحالية
         if st.session_state.last_analysis:
-            res = st.session_state.last_analysis
-            rem_scans = current_coins // COINS_PER_CV if st.session_state.role != 'admin' else "غير محدود"
-            st.info(f"💡 **تنبيه الرصيد:** رصيدك الحالي الآن هو **{current_coins} كوين** (متبقي لديك **{rem_scans}** عملية فحص أخرى).")
-            st.divider()
-
-            col_pdf, col_stats = st.columns([1.1, 1])
-
-            with col_pdf:
-                st.subheader("📄 معاينة الـ CV")
-                if res['pdf_images']:
-                    for img_bytes in res['pdf_images']:
-                        st.image(img_bytes, use_container_width=True)
-
-            with col_stats:
-                st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
-                fig_circle = render_score_circle(res['score'], res['is_ats_cv'])
+            data = st.session_state.last_analysis
+            st.markdown("---")
+            st.subheader(f"📊 نتائج الفحص للملف: {data['file_name']}")
+            
+            c1, c2, c3 = st.columns([1.2, 1.8, 1])
+            
+            with c1:
+                fig_circle = render_score_circle(data['score'], data['is_ats_cv'])
                 st.pyplot(fig_circle)
-
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.subheader("📊 تفاصيل التوافق مع النظام")
-                fig_bars = render_category_bars(res['cat_scores'])
+                
+            with c2:
+                fig_bars = render_category_bars(data['cat_scores'])
                 st.pyplot(fig_bars)
+                
+            with c3:
+                st.markdown("<div class='report-card'>", unsafe_allow_html=True)
+                st.markdown("### 👤 البيانات المستخرجة")
+                st.write(f"**الاسم:** {data['name']}")
+                st.write(f"**التخصص / المسمى:** {data['job_title']}")
+                st.write(f"**البريد:** {data['email']}")
+                st.write(f"**الهاتف:** {data['phone']}")
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+            st.markdown("### 🧠 التحليل التقييمي الذكي")
+            st.markdown(f"<div class='report-card'>{data['ai_analysis']}</div>", unsafe_allow_html=True)
+            
+            if data['pdf_images']:
+                st.markdown("### 🖼️ معاينة السيرة الذاتية")
+                cols = st.columns(len(data['pdf_images']))
+                for idx, img in enumerate(data['pdf_images']):
+                    cols[idx].image(img, caption=f"صفحة {idx+1}", use_column_width=True)
 
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.subheader("📝 التقرير والتحليل التفصيلي")
-                st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
+    # =========================================================
+    # 📂 2. واجهة الفحص الجماعي (Bulk Scan)
+    # =========================================================
+    elif current_p == "bulk_scan":
+        st.title("📂 فحص وتحليل مجموعة سير ذاتية (Bulk Scan)")
+        
+        uploaded_files = st.file_uploader("قم برفع ملفات PDF متعددة", type=["pdf"], accept_multiple_files=True, key="bulk_pdfs")
+
+        if uploaded_files:
+            needed_coins = len(uploaded_files) * COINS_PER_CV
+            st.info(f"عدد الملفات المرفوعة: **{len(uploaded_files)}** | التكلفة المطلوبة: **{needed_coins} كوينز**")
+
+            if st.button("🚀 بدء الفحص الجماعي", key="btn_run_bulk"):
+                if current_coins < needed_coins and st.session_state.role != 'admin':
+                    st.error(f"❌ رصيدك غير كافٍ! تحتاج {needed_coins} كوينز بينما رصيدك {current_coins}.")
+                else:
+                    results = []
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+
+                    for idx, f in enumerate(uploaded_files):
+                        status_text.text(f"جاري فحص الملف ({idx+1}/{len(uploaded_files)}): {f.name}")
+                        res, err = process_single_cv(f, st.session_state.user_email, visitor_ip)
+                        if res:
+                            results.append(res)
+                        progress_bar.progress((idx + 1) / len(uploaded_files))
+
+                    status_text.text("تم الانتهاء من جميع الملفات بنجاح!")
+                    st.session_state.bulk_analysis = results
+
+        if st.session_state.bulk_analysis:
+            st.markdown("---")
+            st.subheader("📋 جدول نتائج الفحص الجماعي")
+            
+            table_data = []
+            for r in st.session_state.bulk_analysis:
+                table_data.append({
+                    "اسم الملف": r['file_name'],
+                    "الاسم": r['name'],
+                    "المسمى الوظيفي": r['job_title'],
+                    "البريد": r['email'],
+                    "الهاتف": r['phone'],
+                    "نسبة التوافق": f"{r['score']}%"
+                })
+            
+            df_res = pd.DataFrame(table_data)
+            st.dataframe(df_res, use_container_width=True)
+
+    # =========================================================
+    # 👑 3. لوحة تحكم الأدمن: سجل النشاط والتقارير
+    # =========================================================
+    elif current_p == "activity_logs" and st.session_state.role == 'admin':
+        st.title("📊 تقارير وسجل نشاط النظام")
+        
+        logs = get_user_logs()
+        if logs:
+            df_logs = pd.DataFrame(logs, columns=["التاريخ والوقت", "البريد الإلكتروني", "نوع الإجراء", "تغير الكوينز", "التفاصيل"])
+            st.dataframe(df_logs, use_container_width=True)
+        else:
+            st.info("لا توجد سجلات نشاط حالياً.")
+
+    # =========================================================
+    # 👑 4. لوحة تحكم الأدمن: الطلبات المعلقة
+    # =========================================================
+    elif current_p == "pending_requests" and st.session_state.role == 'admin':
+        st.title("⏳ طلبات التسجيل المعلقة")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT email FROM users WHERE is_approved = 0 AND role != 'admin'")
+        pending_users = cursor.fetchall()
+        conn.close()
+
+        if pending_users:
+            for u in pending_users:
+                p_email = u[0]
+                c1, c2, c3 = st.columns([3, 1, 1])
+                c1.write(f"📧 **{p_email}**")
+                if c2.button("✅ قبول وتفعيل", key=f"app_{p_email}"):
+                    approve_user_db(p_email)
+                    st.success(f"تم قبول الحساب {p_email}")
+                    st.rerun()
+                if c3.button("❌ رفض", key=f"rej_{p_email}"):
+                    reject_user_db(p_email)
+                    st.warning(f"تم رفض طلب {p_email}")
+                    st.rerun()
+        else:
+            st.info("لا توجد طلبات تسجيل معلقة حالياً.")
+
+    # =========================================================
+    # 👑 5. لوحة تحكم الأدمن: إدارة الحسابات
+    # =========================================================
+    elif current_p == "admin_panel" and st.session_state.role == 'admin':
+        st.title("⚙️ لوحة إدارة الحسابات والرصيد")
+        
+        all_users = get_all_users()
+        if all_users:
+            for u in all_users:
+                u_email, u_coins, u_approved, u_active, u_role = u
+                
+                with st.expander(f"👤 {u_email} | الرصيد الحالي: {u_coins} كوينز | الحالة: {'مفعل' if u_active==1 else 'معطل'}"):
+                    c1, c2 = st.columns([2, 1])
+                    
+                    with c1:
+                        new_c = st.number_input(f"تعديل الكوينز لـ {u_email}", value=u_coins, key=f"num_{u_email}")
+                        if st.button("تحديث الرصيد", key=f"btn_c_{u_email}"):
+                            update_user_coins(u_email, new_c, f"الأدمن ({st.session_state.user_email})")
+                            st.success("تم تحديث الرصيد!")
+                            st.rerun()
+                            
+                    with c2:
+                        status_label = "🔴 إيقاف الحساب" if u_active == 1 else "🟢 تنشيط الحساب"
+                        if st.button(status_label, key=f"btn_tog_{u_email}"):
+                            toggle_user_active_db(u_email, u_active)
+                            st.rerun()
+        else:
+            st.info("لا يوجد مستخدمون حالياً.")
