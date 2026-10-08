@@ -3,7 +3,12 @@ pandas
 numpy
 matplotlib
 pdfplumber
+openpyxl
 google-generativeai
+pypdfium2
 gspread
 oauth2client
-pillow
+extra-streamlit-components
+reportlab
+arabic-reshaper
+python-bidi
