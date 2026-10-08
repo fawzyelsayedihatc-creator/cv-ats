@@ -108,44 +108,4 @@ st.markdown("""
     .stButton>button {
         background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
         color: #FFFFFF !important;
-        font-size: 18px !important;
-        font-weight: 800 !important;
-        border-radius: 12px !important;
-        padding: 10px 20px !important;
-        border: none !important;
-        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
-        width: 100% !important;
-    }
-
-    .report-card {
-        background-color: #FFFFFF;
-        border-radius: 12px;
-        padding: 20px;
-        border: 1px solid #E2E8F0;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-        font-size: 18px !important;
-        font-weight: 700 !important;
-        line-height: 1.8 !important;
-        color: #0F172A !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# --- 2. الالتقاط التلقائي للـ IP ---
-def get_user_ip():
-    try:
-        headers = st.context.headers
-        if "X-Forwarded-For" in headers:
-            return headers["X-Forwarded-For"].split(",")[0].strip()
-        elif "X-Real-IP" in headers:
-            return headers["X-Real-IP"]
-        elif "Remote-Addr" in headers:
-            return headers["Remote-Addr"]
-    except Exception:
-        pass
-    return "غير معروف (Proxy/Cloud)"
-
-# --- 3. الثوابت وإعدادات الأمان ---
-GEMINI_API_KEY = "AQ.Ab8RN6J7aiWlVQUTqWfGxcTe9zandjNMP6SIaWgFlJwILBfb9Q"
-WHATSAPP_NUMBER = "201200686537"
-GOOGLE_SHEET_URL = "
+        font-size
