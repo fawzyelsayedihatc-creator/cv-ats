@@ -21,21 +21,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS المحدث لتوضيح الخط داخل الأزرار
-st.markdown("""
+# CSS للتنسيق العربي المحترفي (RTL) وضبط المسافات والخطوط
+CSS_STYLE = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
     
-    html, body, [class*="css"] {
+    html, body, [class*="css"], [data-testid="stAppViewContainer"] {
         font-family: 'Tajawal', sans-serif !important;
-        background-color: #F8FAFC;
+        background-color: #F8FAFC !important;
+        direction: rtl !important;
+        text-align: right !important;
     }
+
     .stApp { background-color: #F8FAFC; }
 
-    /* --- 🌿 تنسيق القائمة الجانبية (Sidebar) --- */
+    /* --- 🌿 القائمة الجانبية (Sidebar) --- */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #064E3B 0%, #047857 50%, #059669 100%) !important;
         padding-top: 1rem;
+        direction: rtl !important;
+        text-align: right !important;
     }
     
     [data-testid="stSidebar"] h1, 
@@ -46,6 +51,7 @@ st.markdown("""
     [data-testid="stSidebar"] span, 
     [data-testid="stSidebar"] label {
         color: #FFFFFF !important;
+        text-align: right !important;
     }
 
     [data-testid="stSidebar"] [data-testid="stMetricValue"] {
@@ -60,7 +66,7 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* --- 🔘 إجبار الكتابة داخل الأزرار على الظهور باللون الأسود وبحجم كبير --- */
+    /* أزرار السايدبار */
     [data-testid="stSidebar"] .stButton > button {
         background-color: #FFFFFF !important;
         border-radius: 10px !important;
@@ -86,12 +92,6 @@ st.markdown("""
     [data-testid="stSidebar"] .stButton > button:hover {
         background-color: #F1F5F9 !important;
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2) !important;
-    }
-
-    [data-testid="stSidebar"] .stButton > button:hover * {
-        color: #047857 !important;
-        -webkit-text-fill-color: #047857 !important;
     }
 
     .whatsapp-btn {
@@ -109,13 +109,6 @@ st.markdown("""
         transition: all 0.3s ease-in-out !important;
         width: 100% !important;
         box-sizing: border-box !important;
-    }
-
-    .whatsapp-btn:hover {
-        background-color: #F1F5F9 !important;
-        color: #166534 !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2) !important;
     }
 
     .stButton>button {
@@ -140,9 +133,12 @@ st.markdown("""
         font-weight: 700 !important;
         line-height: 1.8 !important;
         color: #0F172A !important;
+        direction: rtl !important;
+        text-align: right !important;
     }
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(CSS_STYLE, unsafe_allow_html=True)
 
 # --- 2. الالتقاط التلقائي للـ IP ---
 def get_user_ip():
@@ -475,7 +471,7 @@ def render_score_circle(score, is_ats_cv=False):
     
     if is_ats_cv:
         primary_color = '#10B981'
-        status_text = "ممتاز"
+        status_text = "EXCELLENT"
     else:
         if score < 60:
             primary_color = '#DC2626'
@@ -500,8 +496,8 @@ def render_score_circle(score, is_ats_cv=False):
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
-    categories_ar = ["الكلمات المفتاحية", "الخبرات والمهام", "المهارات الفنية", "التنسيق والقالب", "التوافق العام"]
-    y_pos = np.arange(len(categories_ar))
+    categories_labels = ["Keywords", "Experience", "Technical Skills", "Formatting", "Overall Match"]
+    y_pos = np.arange(len(categories_labels))
     
     bars = ax.barh(y_pos, cat_scores, color='#DC2626', height=0.45)
     for bar, s in zip(bars, cat_scores):
@@ -513,7 +509,7 @@ def render_category_bars(cat_scores):
             bar.set_color('#DC2626')
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(categories_ar, fontsize=11, fontweight='bold', color='#1E293B')
+    ax.set_yticklabels(categories_labels, fontsize=11, fontweight='bold', color='#1E293B')
     ax.set_xlim(0, 115)
     for spine in ['top', 'right', 'bottom', 'left']:
         ax.spines[spine].set_visible(False)
@@ -745,25 +741,39 @@ else:
             
             st.markdown("---")
             st.subheader(f"📊 نتائج الفحص للملف: {res['file_name']}")
-            
-            c1, c2, c3 = st.columns([1.2, 1.8, 1])
-            with c1:
-                fig_circle = render_score_circle(res['score'], res['is_ats_cv'])
-                st.pyplot(fig_circle)
-            with c2:
-                fig_bars = render_category_bars(res['cat_scores'])
-                st.pyplot(fig_bars)
-            with c3:
+
+            # --- 🔥 التقسيم المزدوج: المعاينة بالجنب والتقرير على اليمين ---
+            col_report, col_preview = st.columns([1.3, 1])
+
+            # العمود الأيمن: التقرير والرسومات
+            with col_report:
+                sub_c1, sub_c2 = st.columns([1, 1.4])
+                with sub_c1:
+                    fig_circle = render_score_circle(res['score'], res['is_ats_cv'])
+                    st.pyplot(fig_circle)
+                with sub_c2:
+                    fig_bars = render_category_bars(res['cat_scores'])
+                    st.pyplot(fig_bars)
+
                 st.markdown("<div class='report-card'>", unsafe_allow_html=True)
                 st.markdown("### 👤 البيانات المستخرجة")
                 st.write(f"**الاسم:** {res['name']}")
                 st.write(f"**المسمى:** {res['job_title']}")
                 st.write(f"**البريد:** {res['email']}")
                 st.write(f"**الهاتف:** {res['phone']}")
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("</div><br>", unsafe_allow_html=True)
 
-            st.markdown("### 🧠 التحليل التقييمي الذكي")
-            st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
+                st.markdown("### 🧠 التحليل التقييمي الذكي")
+                st.markdown(f"<div class='report-card'>{res['ai_analysis']}</div>", unsafe_allow_html=True)
+
+            # العمود الأيسر: معاينة صفحات السيرة الذاتية جنب التقرير
+            with col_preview:
+                st.markdown("### 🖼️ معاينة السيرة الذاتية")
+                if res['pdf_images']:
+                    for idx, img_bytes in enumerate(res['pdf_images']):
+                        st.image(img_bytes, caption=f"الصفحة {idx + 1}", use_container_width=True)
+                else:
+                    st.warning("لا تتوفر معاينة صورية لهذا الملف.")
 
     # =========================================================
     # 📂 2. واجهة الفحص الجماعي (Bulk Scan)
