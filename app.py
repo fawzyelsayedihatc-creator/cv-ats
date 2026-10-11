@@ -138,7 +138,7 @@ def append_to_google_sheet_silent(name, job_title, email, phone, score, user_ema
         row = [now_str, name, job_title, email, phone, f"{score}%", user_email, ip_addr, file_name]
         sheet.append_row(row)
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 # --- 4. قاعدة البيانات المحلية والسجلات ---
@@ -381,31 +381,33 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
+# --- دالة رسم الدائرة بالمنطق الجديد (ضعيف - جيد - ممتاز) ---
 def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
     
-    if is_ats_cv:
-        primary_color = '#10B981'
+    if is_ats_cv or score >= 95:
+        primary_color = '#10B981'  # أخضر
         status_text = "ممتاز"
+    elif score <= 50:
+        primary_color = '#DC2626'  # أحمر
+        status_text = "ضعيف"
     else:
-        primary_color = '#D97706' if score >= 50 else '#DC2626'
-        status_text = ""
+        primary_color = '#D97706'  # برتقالي
+        status_text = "جيد"
     
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
            wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
     
-    if is_ats_cv:
-        ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
-        ax.text(0, -0.15, status_text, fontsize=14, fontweight='bold', ha='center', va='center', color=primary_color)
-    else:
-        ax.text(0, 0.0, f"{score}%", fontsize=32, fontweight='bold', ha='center', va='center', color='#0F172A')
+    ax.text(0, 0.12, f"{score}%", fontsize=28, fontweight='bold', ha='center', va='center', color='#0F172A')
+    ax.text(0, -0.15, status_text, fontsize=16, fontweight='bold', ha='center', va='center', color=primary_color)
         
     ax.text(0, -0.38, "ATS MATCH", fontsize=10, fontweight='bold', ha='center', va='center', color='#64748B')
     ax.axis('equal')
     plt.tight_layout()
     return fig
 
+# --- دالة رسم الأعمدة بالمنطق الجديد ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
@@ -413,7 +415,13 @@ def render_category_bars(cat_scores):
     y_pos = np.arange(len(categories_ar))
     bars = ax.barh(y_pos, cat_scores, color='#D97706', height=0.45)
     for bar, s in zip(bars, cat_scores):
-        bar.set_color('#D97706' if s >= 50 else '#DC2626')
+        if s >= 95:
+            bar.set_color('#10B981')
+        elif s > 50:
+            bar.set_color('#D97706')
+        else:
+            bar.set_color('#DC2626')
+            
     ax.set_yticks(y_pos)
     ax.set_yticklabels(categories_ar, fontsize=11, fontweight='bold', color='#1E293B')
     ax.set_xlim(0, 115)
@@ -426,6 +434,7 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
+# --- دالة معالجة سيرة ذاتية واحدة بالمنطق الجديد للفرز ---
 def process_single_cv(file, user_email, visitor_ip):
     extracted_text = ""
     try:
@@ -455,13 +464,19 @@ def process_single_cv(file, user_email, visitor_ip):
     file_name_lower = file.name.lower()
     is_ats_cv = "ats cv" in file_name_lower or "ats_cv" in file_name_lower or "ats.cv" in file_name_lower
     
+    # --- 🎯 تطبيق شروط الفرز والنسب بدقة ---
     if is_ats_cv:
-        score = np.random.randint(90, 100)
+        score = np.random.randint(96, 101)  # ممتاز (فوق 95%)
     else:
-        score = np.random.randint(50, 76)
+        # 70% من السير العادية تكون بين 40% و 50% (ضعيف - أحمر)
+        # 30% المتبقية تكون بين 51% و 75% (جيد - برتقالي)
+        if np.random.rand() < 0.70:
+            score = np.random.randint(40, 51)
+        else:
+            score = np.random.randint(51, 76)
 
     ai_analysis = analyze_cv_with_ai(extracted_text)
-    cat_scores = [score - 3, score + 2, score - 5, score - 7, score]
+    cat_scores = [max(10, score - 3), min(100, score + 2), max(10, score - 5), max(10, score - 7), score]
 
     append_to_google_sheet_silent(name, job_title, email, phone, score, user_email, visitor_ip, file.name)
     log_activity(user_email, "فحص CV", -COINS_PER_CV, f"فحص الملف {file.name} - النتيجة {score}%")
@@ -561,7 +576,6 @@ else:
     current_coins = user_info[1]
     st.session_state.current_coins = current_coins
     
-    # --- القائمة الجانبية (Sidebar Navigation) ---
     with st.sidebar:
         st.markdown(f"### 👤 الحساب الحالي:\n`{st.session_state.user_email}`")
         st.metric(label="🪙 رصيد الكوينز الحالي", value=f"{current_coins}")
@@ -606,7 +620,7 @@ else:
     current_p = st.session_state.current_page
 
     # =========================================================
-    # 📄 1. واجهة الفحص الفردي (Single CV Scan) - مرتبة بالجنب وتحتها
+    # 📄 1. واجهة الفحص الفردي (Single CV Scan)
     # =========================================================
     if current_p == "single_scan" or current_p == "main":
         st.title("📄 فحص وتحليل سيرة ذاتية واحدة")
@@ -640,17 +654,15 @@ else:
 
             st.subheader(f"📊 نتائج الفحص للملف: {res['file_name']}")
 
-            # --- التخطيط الجديد والمضبوط: السيرة الذاتية في جانب وباقي النتائج في الجانب الآخر مرتبة تحت بعضها ---
+            # --- التخطيط المترتب: الـ CV في جانب، وباقي النتائج مرتبة تحتاها في الجانب الآخر ---
             col_pdf, col_details = st.columns([1, 1.2])
 
-            # الجانب الأيسر: معاينة السيرة الذاتية
             with col_pdf:
                 st.subheader("📄 معاينة الـ CV")
                 if res['pdf_images']:
                     for img_bytes in res['pdf_images']:
                         st.image(img_bytes, use_container_width=True)
 
-            # الجانب الأيمن: النتائج والرسومات والتحليل مرتبة هندسياً تحت بعضها
             with col_details:
                 st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
                 fig_circle = render_score_circle(res['score'], res['is_ats_cv'])
