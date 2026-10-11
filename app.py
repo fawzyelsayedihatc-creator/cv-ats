@@ -139,7 +139,6 @@ def append_to_google_sheet_silent(name, job_title, email, phone, score, user_ema
         sheet.append_row(row)
         return True
     except Exception as e:
-        st.error(f"خطأ في إضافة البيانات للشيت: {e}")
         return False
 
 # --- 4. قاعدة البيانات المحلية والسجلات ---
@@ -170,7 +169,6 @@ def init_db():
         )
     """)
     
-    # التأكد من التوافق مع الأعمدة المضافة حديثاً
     cursor.execute("PRAGMA table_info(users)")
     columns = [column[1] for column in cursor.fetchall()]
     if 'is_active' not in columns:
@@ -220,7 +218,6 @@ if 'bulk_analysis' not in st.session_state:
 if 'current_coins' not in st.session_state:
     st.session_state.current_coins = 0
 
-# الاسترجاع والتثبيت التلقائي لصفحة التنقل عبر URL query params
 if "page" in query_params:
     st.session_state.current_page = query_params["page"]
 elif 'current_page' not in st.session_state:
@@ -348,7 +345,6 @@ def convert_pdf_to_images(uploaded_file):
         pass
     return images_bytes
 
-# --- دالة استخراج التخصص / المسمى الوظيفي الذكية ---
 def extract_job_title_with_ai(cv_text):
     prompt = f"""
     قم بقراءة نص السيرة الذاتية التالي واستخراج التخصص الرئيسي أو المسمى الوظيفي صاحب السيرة الذاتية (مثل: Software Engineer, Accountant, Graphic Designer, Sales Manager, Data Analyst, إلخ).
@@ -376,7 +372,7 @@ def extract_job_title_with_ai(cv_text):
     return "غير محدد"
 
 def analyze_cv_with_ai(cv_text):
-    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
+    prompt = f"أنت خبير محترف في أنظمة التوظيف الـ ATS ومراجع سير ذاتية. قم بتحليل نص السيرة الذاتية التالي باختصار ووضوح باللغة العربية:\n{cv_text[:3000]}\nأعطني النتيجة بالنمط التالي بالضبط:\n✅ **أبرز نقاط القوة:**\n- (نقطتين)\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- (نقطتين)\n💡 **نصائح سريعة للتحسين:**\n- (نصيحتين)"
     try:
         if ai_model:
             response = ai_model.generate_content(prompt)
@@ -385,16 +381,15 @@ def analyze_cv_with_ai(cv_text):
         pass
     return "✅ **أبرز نقاط القوة:**\n- هيكلية منظمة وسهلة القراءة.\n- يتضمن معلومات اتصال أساسية بشكل واضح.\n\n⚠️ **أبرز الأخطاء ونقاط الضعف:**\n- قلة الكلمات المفتاحية التخصصية.\n- بعض التنسيقات غير مرئية لنظام الـ ATS.\n\n💡 **نصائح سريعة للتحسين:**\n- ركز على المطابقة مع متطلبات الوظيفة.\n- اعتمد التنسيق القياسي البسيط."
 
-# --- دالة رسم الدائرة ---
 def render_score_circle(score, is_ats_cv=False):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(3.8, 3.8), facecolor='#FFFFFF')
     
     if is_ats_cv:
-        primary_color = '#10B981'  # أخضر لـ ممتاز
+        primary_color = '#10B981'
         status_text = "ممتاز"
     else:
-        primary_color = '#D97706' if score >= 50 else '#DC2626'  # برتقالي أو أحمر
+        primary_color = '#D97706' if score >= 50 else '#DC2626'
         status_text = ""
     
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
@@ -411,7 +406,6 @@ def render_score_circle(score, is_ats_cv=False):
     plt.tight_layout()
     return fig
 
-# --- دالة رسم الأعمدة ---
 def render_category_bars(cat_scores):
     plt.style.use('default')
     fig, ax = plt.subplots(figsize=(5.5, 3.8), facecolor='#FFFFFF')
@@ -432,7 +426,6 @@ def render_category_bars(cat_scores):
     plt.tight_layout()
     return fig
 
-# --- دالة معالجة سيرة ذاتية واحدة ---
 def process_single_cv(file, user_email, visitor_ip):
     extracted_text = ""
     try:
@@ -577,7 +570,6 @@ else:
         st.divider()
         st.subheader("📌 أزرار التنقل والفحص")
         
-        # أزرار تنقل مستقلة بدون توقف مع الـ Refresh
         if st.button("📄 فحص سيرة ذاتية (فردي)", key="nav_single"):
             set_page("single_scan")
             
@@ -614,7 +606,7 @@ else:
     current_p = st.session_state.current_page
 
     # =========================================================
-    # 📄 1. واجهة الفحص الفردي (Single CV Scan)
+    # 📄 1. واجهة الفحص الفردي (Single CV Scan) - مرتبة بالجنب وتحتها
     # =========================================================
     if current_p == "single_scan" or current_p == "main":
         st.title("📄 فحص وتحليل سيرة ذاتية واحدة")
@@ -624,7 +616,7 @@ else:
         if uploaded_file is not None:
             if st.button("🚀 بدء تحليل السيرة الذاتية الآن", type="primary", key="btn_run_single"):
                 if current_coins < COINS_PER_CV and st.session_state.role != 'admin':
-                    st.error("⚠️️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
+                    st.error("⚠️ رصيدك غير كافٍ! يرجى التواصل مع الإدارة لشحن رصيد الكوينز.")
                 else:
                     if st.session_state.role != 'admin':
                         new_balance = current_coins - COINS_PER_CV
@@ -646,15 +638,20 @@ else:
             st.info(f"💡 **تنبيه الرصيد:** رصيدك الحالي الآن هو **{current_coins} كوين** (متبقي لديك **{rem_scans}** عملية فحص أخرى).")
             st.divider()
 
-            col_pdf, col_stats = st.columns([1.1, 1])
+            st.subheader(f"📊 نتائج الفحص للملف: {res['file_name']}")
 
+            # --- التخطيط الجديد والمضبوط: السيرة الذاتية في جانب وباقي النتائج في الجانب الآخر مرتبة تحت بعضها ---
+            col_pdf, col_details = st.columns([1, 1.2])
+
+            # الجانب الأيسر: معاينة السيرة الذاتية
             with col_pdf:
                 st.subheader("📄 معاينة الـ CV")
                 if res['pdf_images']:
                     for img_bytes in res['pdf_images']:
                         st.image(img_bytes, use_container_width=True)
 
-            with col_stats:
+            # الجانب الأيمن: النتائج والرسومات والتحليل مرتبة هندسياً تحت بعضها
+            with col_details:
                 st.subheader("🎯 نسبة التوافق الكلية (ATS Score)")
                 fig_circle = render_score_circle(res['score'], res['is_ats_cv'])
                 st.pyplot(fig_circle)
@@ -734,122 +731,87 @@ else:
                             })
                         progress_bar.progress((idx + 1) / total_files)
                         
-                    status_text.success("🎉 اكتمل الفحص الجماعي بنجاح!")
+                    status_text.text("✅ تم الانتهاء من الفحص الجماعي بنجاح!")
                     st.session_state.bulk_analysis = results_list
                     st.rerun()
 
         if st.session_state.bulk_analysis:
             st.divider()
-            st.subheader("📋 نتائج الفحص الجماعي")
+            st.subheader("📋 نتائج الفحص الجماعي لجميع الملفات")
             df_bulk = pd.DataFrame(st.session_state.bulk_analysis)
             st.dataframe(df_bulk, use_container_width=True)
-            
-            output_b = BytesIO()
-            with pd.ExcelWriter(output_b, engine='openpyxl') as writer:
-                df_bulk.to_excel(writer, index=False, sheet_name='Bulk CV Analysis')
-            excel_bulk = output_b.getvalue()
-            
+
+            out_bulk = BytesIO()
+            with pd.ExcelWriter(out_bulk, engine='openpyxl') as writer:
+                df_bulk.to_excel(writer, index=False, sheet_name='Bulk Analysis')
+            excel_bulk_data = out_bulk.getvalue()
+
             st.download_button(
                 label="📥 تنزيل تقرير الفحص الجماعي (Excel)",
-                data=excel_bulk,
-                file_name=f"Bulk_CV_Analysis_{datetime.date.today()}.xlsx",
+                data=excel_bulk_data,
+                file_name="Bulk_CV_Analysis_Report.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
     # =========================================================
-    # 📊 3. تقارير وسجل نشاط الحسابات (Audit & Activity Logs)
+    # 👑 3. لوحة تحكم الأدمن: التقارير وسجل النشاط
     # =========================================================
     elif current_p == "activity_logs" and st.session_state.role == 'admin':
-        st.title("📊 تحليل البيانات وتقرير النشاط الكامل لكل حساب")
-        
-        all_users = get_all_users()
-        user_list = [u[0] for u in all_users]
-        
-        selected_user = st.selectbox("اختر الحساب لعرض تقريره والتغيرات الخاصة به:", ["الكل"] + user_list)
-        
-        if selected_user == "الكل":
-            logs = get_user_logs()
-        else:
-            logs = get_user_logs(selected_user)
-            
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.title("📊 تقارير وسجل نشاط النظام")
+        logs = get_user_logs()
         if logs:
-            df_logs = pd.DataFrame(logs, columns=["التاريخ والوقت", "البريد الإلكتروني", "نوع الحركة", "تغير الكوينز", "التفاصيل"])
+            df_logs = pd.DataFrame(logs, columns=["التاريخ والوقت", "البريد الإلكتروني", "الإجراء", "تغير الكوينز", "التفاصيل"])
             st.dataframe(df_logs, use_container_width=True)
         else:
-            st.info("لا توجد سجلات حركة لهذا الحساب حتى الآن.")
+            st.info("لا توجد سجلات نشاط مسجلة حتى الآن.")
 
     # =========================================================
-    # ⏳ 4. إدارة الطلبات المعلقة (Pending Requests)
+    # 👑 4. لوحة تحكم الأدمن: الطلبات المعلقة
     # =========================================================
     elif current_p == "pending_requests" and st.session_state.role == 'admin':
-        st.title("⏳ الطلبات المعلقة بانتظار التفعيل")
-        st.caption("إدارة طلبات التسجيل الجديدة وتفعيلها أو رفضها:")
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        all_users = get_all_users()
-        pending_users = [u for u in all_users if u[2] == 0]
-        
-        if pending_users:
-            for email, coins, approved, active, role in pending_users:
-                with st.container():
-                    col_info, col_acc, col_rej = st.columns([4, 2, 2])
-                    with col_info:
-                        st.markdown(f"##### 👤 البريد: `{email}`")
-                        st.caption("الحالة: ⏳ قيد الانتظار")
-                    with col_acc:
-                        if st.button("✅ قبول وتفعيل", key=f"p_acc_{email}"):
-                            approve_user_db(email)
-                            st.success(f"تم قبول وتفعيل حساب {email}!")
-                            st.rerun()
-                    with col_rej:
-                        if st.button("❌ رفض الطلب", key=f"p_rej_{email}"):
-                            reject_user_db(email)
-                            st.warning(f"تم رفض وحذف طلب {email}.")
-                            st.rerun()
-                    st.divider()
+        st.title("⏳ طلبات تسجيل الحسابات المعلقة")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT email FROM users WHERE is_approved = 0 AND role != 'admin'")
+        pending_list = cursor.fetchall()
+        conn.close()
+
+        if pending_list:
+            for p in pending_list:
+                p_email = p[0]
+                col_e, col_app, col_rej = st.columns([3, 1, 1])
+                col_e.write(f"📧 {p_email}")
+                if col_app.button("✅ قبول وتفعيل", key=f"approve_{p_email}"):
+                    approve_user_db(p_email)
+                    st.success(f"تم تفعيل الحساب {p_email} بنجاح!")
+                    st.rerun()
+                if col_rej.button("❌ رفض وحذف", key=f"reject_{p_email}"):
+                    reject_user_db(p_email)
+                    st.warning(f"تم حذف طلب الحساب {p_email}")
+                    st.rerun()
         else:
-            st.info("🎉 لا توجد أي طلبات تسجيل معلقة حالياً.")
+            st.info("لا توجد طلبات تسجيل معلقة في الوقت الحالي.")
 
     # =========================================================
-    # 👑 5. لوحة إدارة الحسابات والتحكم بالكوينز والتفعيل/الإيقاف
+    # 👑 5. لوحة تحكم الأدمن: إدارة الحسابات والكوينز
     # =========================================================
     elif current_p == "admin_panel" and st.session_state.role == 'admin':
-        st.title("👑 لوحة إدارة الحسابات - دكتور فوزي")
-        st.caption("إدارة الكوينز، تفعيل الحسابات، أو إيقافها بزر تحكم مباشر:")
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        all_users = get_all_users()
-        active_users = [u for u in all_users if u[2] == 1]
-        
-        if active_users:
-            for email, coins, approved, active, role in active_users:
-                with st.container():
-                    col_u_email, col_u_coins, col_u_input, col_u_btn, col_u_toggle = st.columns([3, 2, 2, 2, 2])
+        st.title("⚙️ لوحة إدارة المستخدمين والرصيد")
+        users_list = get_all_users()
+        if users_list:
+            for u in users_list:
+                u_email, u_coins, u_app, u_act, u_role = u
+                with st.expander(f"👤 {u_email} | الرصيد: {u_coins} كوينز | الحالة: {'مفعل' if u_act==1 else 'معطل'}"):
+                    c_input, c_btn = st.columns([2, 1])
+                    new_val = c_input.number_input(f"تعديل كوينز {u_email}", value=u_coins, key=f"coins_{u_email}")
+                    if c_btn.button("تحديث الرصيد", key=f"upd_{u_email}"):
+                        update_user_coins(u_email, new_val, f"الأدمن ({st.session_state.user_email})")
+                        st.success("تم تحديث رصيد الكوينز بنجاح!")
+                        st.rerun()
                     
-                    with col_u_email:
-                        status_mark = "🟢 مفعل" if active == 1 else "🔴 معطل"
-                        st.markdown(f"##### 👤 `{email}`\n<small>{status_mark}</small>", unsafe_allow_html=True)
-                    
-                    with col_u_coins:
-                        st.markdown(f"🪙 الرصيد: **{coins} كوين**")
-                    
-                    with col_u_input:
-                        new_c = st.number_input("الرصيد الجديد:", value=coins, step=20, key=f"adm_c_{email}")
-                    
-                    with col_u_btn:
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        if st.button("حفظ الرصيد", key=f"adm_save_{email}"):
-                            update_user_coins(email, new_c, f"Admin ({st.session_state.user_email})")
-                            st.success(f"تم تعديل رصيد {email} إلى {new_c}.")
-                            st.rerun()
-                            
-                    with col_u_toggle:
-                        st.markdown("<br>", unsafe_allow_html=True)
-                        btn_label = "🔴 إيقاف" if active == 1 else "🟢 تنشيط"
-                        if st.button(btn_label, key=f"adm_tog_{email}"):
-                            toggle_user_active_db(email, active)
-                            st.rerun()
-                    st.divider()
+                    toggle_label = "🔴 إيقاف الحساب" if u_act == 1 else "🟢 تنشيط الحساب"
+                    if st.button(toggle_label, key=f"toggle_{u_email}"):
+                        toggle_user_active_db(u_email, u_act)
+                        st.rerun()
         else:
-            st.info("لا يوجد مستخدمون نشطون حالياً.")
+            st.info("لا يوجد مستخدمون مسجلون في النظام حتى الآن.")
