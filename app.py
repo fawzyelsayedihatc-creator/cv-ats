@@ -391,8 +391,10 @@ def render_score_circle(score, is_ats_cv=False):
         status_text = "ممتاز"
     elif score <= 50:
         primary_color = '#DC2626'  # أحمر
+        status_text = "ضعيف"
     else:
         primary_color = '#D97706'  # برتقالي
+        status_text = "جيد"
     
     ax.pie([score, 100 - score], colors=[primary_color, '#F1F5F9'], startangle=90, counterclock=False,
            wedgeprops=dict(width=0.25, edgecolor='#FFFFFF', linewidth=2))
